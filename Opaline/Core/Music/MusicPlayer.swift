@@ -1055,7 +1055,10 @@ extension MusicPlayer: PlaybackContext {
             return
         }
         consecutiveFailures = 0
+        // Timed: a slow song start can freeze the screen.
+        let started = CACurrentMediaTime()
         recordPlay(track)
+        let recorded = CACurrentMediaTime()
         resourceLoader = prepared.resourceLoader
         PlaybackBufferPolicy.configure(item: prepared.item)
         prepared.item.preferredForwardBufferDuration = Self.bufferSeconds
@@ -1066,9 +1069,19 @@ extension MusicPlayer: PlaybackContext {
             player.seek(to: resumeAt)
         }
         player.playImmediately(atRate: 1)
+        let attached = CACurrentMediaTime()
         isLoading = false
         beginNowPlaying(track, duration: prepared.duration)
+        let announced = CACurrentMediaTime()
         postChange()
+        let total = CACurrentMediaTime() - started
+        if total > 0.1 {
+            AppLog.perf(String(
+                format: "music start took %.0f ms: play log %.0f, player %.0f, now playing %.0f, screens %.0f",
+                total * 1_000, (recorded - started) * 1_000, (attached - recorded) * 1_000,
+                (announced - attached) * 1_000, (CACurrentMediaTime() - announced) * 1_000
+            ))
+        }
     }
 
     func updateStatusLabel(_ text: String) {}

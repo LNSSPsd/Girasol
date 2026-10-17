@@ -28,6 +28,9 @@ final class MusicPlayLog {
     private static let halfLife: TimeInterval = 14 * 24 * 3_600
 
     private var entries: [String: Entry] = [:]
+    /// Encoding every track heard and storing it is not main-thread work: it
+    /// ran at every song start. One queue keeps the writes in order.
+    private let writer = DispatchQueue(label: "MusicPlayLog.writer", qos: .utility)
 
     private init() {
         if let data = UserDefaults.standard.data(forKey: Self.key),
@@ -67,8 +70,13 @@ final class MusicPlayLog {
         var entry = tracks[video.id] ?? TrackEntry(video: video, plays: [])
         entry.plays = entry.plays.filter { now.timeIntervalSince($0) < Self.window } + [now]
         tracks[video.id] = entry
-        if let data = try? JSONEncoder().encode(tracks) {
-            UserDefaults.standard.set(data, forKey: Self.tracksKey)
+        // Tracks not heard within the window count for nothing any more.
+        tracks = tracks.filter { $0.value.plays.contains { now.timeIntervalSince($0) < Self.window } }
+        let snapshot = tracks
+        writer.async {
+            if let data = try? JSONEncoder().encode(snapshot) {
+                UserDefaults.standard.set(data, forKey: Self.tracksKey)
+            }
         }
     }
 
@@ -101,8 +109,11 @@ final class MusicPlayLog {
     }
 
     private func save() {
-        if let data = try? JSONEncoder().encode(entries) {
-            UserDefaults.standard.set(data, forKey: Self.key)
+        let snapshot = entries
+        writer.async {
+            if let data = try? JSONEncoder().encode(snapshot) {
+                UserDefaults.standard.set(data, forKey: Self.key)
+            }
         }
     }
 }

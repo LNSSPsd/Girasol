@@ -164,18 +164,40 @@ static const CGFloat OPLineInsetY = 8;
 	BOOL animated = self.currentLine >= 0;
 	self.currentLine = line;
 	// Recolor the rows on screen in place: a reload would rebuild them in
-	// the middle of the scroll below.
-	[UIView transitionWithView:self.tableView
-	                  duration:0.25
-	                   options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction
-	                animations:^{
-		                for (OPLyricsCell *cell in self.tableView.visibleCells) {
-			                NSIndexPath *path = [self.tableView indexPathForCell:cell];
-			                if (path)
-				                [self style:cell row:path.row];
-		                }
-	                }
-	                completion:nil];
+	// the middle of the scroll below. Only the labels whose color changes
+	// cross-dissolve (the old and the new line); a transition on the whole
+	// table snapshotted every row at every line, 50-80 ms each time.
+	for (OPLyricsCell *cell in self.tableView.visibleCells) {
+		NSIndexPath *path = [self.tableView indexPathForCell:cell];
+		if (!path)
+			continue;
+		UIColor *before = cell.line.textColor;
+		CGFloat alpha = cell.line.alpha;
+		[self style:cell row:path.row];
+		if (![cell.line.textColor isEqual:before]) {
+			UIColor *after = cell.line.textColor;
+			cell.line.textColor = before;
+			[UIView transitionWithView:cell.line
+			                  duration:0.25
+			                   options:UIViewAnimationOptionTransitionCrossDissolve |
+			                           UIViewAnimationOptionAllowUserInteraction
+			                animations:^{
+				                cell.line.textColor = after;
+			                }
+			                completion:nil];
+		}
+		if (cell.line.alpha != alpha) {
+			CGFloat target = cell.line.alpha;
+			cell.line.alpha = alpha;
+			[UIView animateWithDuration:0.25
+			                      delay:0
+			                    options:UIViewAnimationOptionAllowUserInteraction
+			                 animations:^{
+				                 cell.line.alpha = target;
+			                 }
+			                 completion:nil];
+		}
+	}
 	BOOL userScrolling = self.manualScrollUntil && [self.manualScrollUntil timeIntervalSinceNow] > 0;
 	if (!userScrolling)
 		[self scrollToCurrentAnimated:animated && !self.needsPosition];
