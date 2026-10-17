@@ -24,3 +24,6 @@ AGENTS.md
 .mimocode/
 
 __pycache__/
+
+# Debug logs shared from the device
+*.log
