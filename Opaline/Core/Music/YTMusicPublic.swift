@@ -201,6 +201,7 @@ enum YTMusicPublic {
     ) {
         post("browse", ["browseId": browseId], tag: "artist(\(browseId))") { json in
             let page = json.flatMap { parseArtist($0, browseId: browseId) }
+            MusicNativeNames.lookUp(page?.topSongs ?? [])
             DispatchQueue.main.async { completion(page) }
         }
     }
@@ -253,6 +254,9 @@ enum YTMusicPublic {
                 of: queue?.tracks ?? [], endpoint: "next", body: body, tag: "queue ja", signedIn: signedIn
             ) { names, _ in
                 if let tracks = queue?.tracks {
+                    // A radio's Japanese copy names other songs: the artists
+                    // it did not cover are asked about one by one.
+                    MusicNativeNames.lookUp(tracks)
                     queue = MusicWatchQueue(
                         tracks: tracks.map { native($0, names) },
                         continuation: queue?.continuation,
@@ -857,7 +861,7 @@ enum YTMusicPublic {
                 id: videoId,
                 title: songTitle,
                 channelId: artist?.browseId,
-                channelName: artist?.name ?? subtitle,
+                channelName: MusicNativeNames.artist(artist?.browseId) ?? artist?.name ?? subtitle,
                 channelAvatarURL: nil,
                 thumbnailURL: thumb ?? "https://i.ytimg.com/vi/\(videoId)/hqdefault.jpg",
                 viewCount: nil,
@@ -870,9 +874,11 @@ enum YTMusicPublic {
         }
         switch pageType(endpoint) {
         case "MUSIC_PAGE_TYPE_ARTIST":
-            return .artist(MusicArtistRef(browseId: browseId, name: title, subtitle: subtitle, thumbnailURL: thumb))
+            let name = MusicNativeNames.artist(browseId) ?? title
+            return .artist(MusicArtistRef(browseId: browseId, name: name, subtitle: subtitle, thumbnailURL: thumb))
         case "MUSIC_PAGE_TYPE_ALBUM":
-            return .album(MusicAlbumRef(browseId: browseId, title: title, subtitle: subtitle, thumbnailURL: thumb))
+            let name = MusicNativeNames.album(browseId) ?? title
+            return .album(MusicAlbumRef(browseId: browseId, title: name, subtitle: subtitle, thumbnailURL: thumb))
         case "MUSIC_PAGE_TYPE_PLAYLIST":
             return .playlist(Playlist(
                 id: browseId.hasPrefix("VL") ? String(browseId.dropFirst(2)) : browseId,
@@ -905,11 +911,12 @@ enum YTMusicPublic {
 
     private static func parseArtist(_ json: [String: Any], browseId: String) -> MusicArtistPage? {
         let header = (json["header"] as? [String: Any])?.values.first as? [String: Any]
-        let name = texts(header?["title"])
-        guard !name.isEmpty else {
+        let shown = texts(header?["title"])
+        guard !shown.isEmpty else {
             AppLog.innertube("ytmusic artist \(browseId): no header")
             return nil
         }
+        let name = MusicNativeNames.artist(browseId) ?? shown
         let play = header?.digDict("playButton", "buttonRenderer", "navigationEndpoint", "watchEndpoint")
         let radio = header?.digString(
             "startRadioButton", "buttonRenderer", "navigationEndpoint", "watchPlaylistEndpoint", "playlistId"
@@ -1119,6 +1126,7 @@ enum YTMusicPublic {
                 let (artist, album) = bylineLinks(Array(columnRuns.dropFirst().joined()))
                 names[videoId] = NativeNames(title: title, artist: artist, album: album)
             }
+            MusicNativeNames.learn(from: json)
             AppLog.innertube("ytmusic \(tag): \(names.count) names")
             completion(names, json)
         }
@@ -1127,7 +1135,7 @@ enum YTMusicPublic {
     /// The track under its Japanese names, where there are any.
     private static func native(_ video: Video, _ names: [String: NativeNames]) -> Video {
         guard let found = names[video.id] else {
-            return video
+            return MusicNativeNames.renamed(video)
         }
         let links = MusicTrackLinks.links(of: video.id)
         MusicTrackLinks.note(video.id, artist: found.artist ?? links.artist, album: found.album ?? links.album)
@@ -1135,7 +1143,7 @@ enum YTMusicPublic {
             id: video.id,
             title: found.title.isEmpty ? video.title : found.title,
             channelId: video.channelId,
-            channelName: found.artist?.name ?? video.channelName,
+            channelName: found.artist?.name ?? MusicNativeNames.artist(video.channelId) ?? video.channelName,
             channelAvatarURL: video.channelAvatarURL,
             thumbnailURL: video.thumbnailURL,
             viewCount: video.viewCount,
@@ -1159,6 +1167,9 @@ enum YTMusicPublic {
         let header = firstDict(named: "musicResponsiveHeaderRenderer", in: json)
             ?? firstDict(named: "musicDetailHeaderRenderer", in: json)
         let title = texts(header?["title"])
+        if !title.isEmpty {
+            MusicNativeNames.learn(album: browseId, title: title)
+        }
         let (artist, _) = bylineLinks(runs(header?["straplineTextOne"]) + runs(header?["subtitle"]))
         let pageArtist = artist ?? page.artist
         let album = MusicAlbumRef(

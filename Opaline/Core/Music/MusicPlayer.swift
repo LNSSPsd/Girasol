@@ -201,6 +201,11 @@ final class MusicPlayer: NSObject {
             self?.endCrossfade()
         }
         NotificationCenter.default.addObserver(
+            forName: MusicNativeNames.didLearnNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.applyNativeNames()
+        }
+        NotificationCenter.default.addObserver(
             forName: .OPMusicSettingsDidChange, object: nil, queue: .main
         ) { [weak self] _ in
             if let self, let track = self.current {
@@ -1116,6 +1121,25 @@ final class MusicPlayer: NSObject {
         }
     }
 
+    /// Artists' Japanese names (`MusicNativeNames`) on everything queued,
+    /// once they are known — a queue fetched before is renamed in place.
+    private func applyNativeNames() {
+        let before = [current?.channelName] + queue.map(\.channelName) + upcoming.map(\.channelName)
+        current = current.map(MusicNativeNames.renamed)
+        queue = queue.map(MusicNativeNames.renamed)
+        upcoming = upcoming.map(MusicNativeNames.renamed)
+        context = context.map(MusicNativeNames.renamed)
+        history = history.map(MusicNativeNames.renamed)
+        let after = [current?.channelName] + queue.map(\.channelName) + upcoming.map(\.channelName)
+        guard before != after else {
+            return
+        }
+        if let current {
+            beginNowPlaying(current, duration: duration > 0 ? duration : nil)
+        }
+        postChange()
+    }
+
     /// Louder songs turned down to YouTube's target (setting "Same volume
     /// for every song"); on both start paths, the preloaded one included.
     func applyLevel(for track: Video) {
@@ -1207,6 +1231,7 @@ final class MusicPlayer: NSObject {
         guard let current else {
             return
         }
+        MusicNativeNames.lookUp([current] + queue + upcoming)
         let saved = SavedContext(
             trackId: current.id,
             queue: queue,
