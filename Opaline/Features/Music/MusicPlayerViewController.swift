@@ -264,7 +264,13 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
             lyricsView.isHidden = true
         }
         // Waits for the stream: its length is what matches the right version.
-        guard lyricsTrackId != track.id, !player.isLoading else {
+        // A stream that has not told its length yet goes by the listed one
+        // ("4:59"); without either, matching would ignore length entirely.
+        let listed = (track.duration ?? "").split(separator: ":")
+            .compactMap { Int($0) }
+            .reduce(0) { $0 * 60 + $1 }
+        let duration = player.duration > 0 ? player.duration : TimeInterval(listed)
+        guard lyricsTrackId != track.id, !player.isLoading, duration > 0 else {
             return
         }
         lyricsTrackId = track.id
@@ -273,13 +279,13 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
             forVideoId: track.id,
             title: track.title,
             artist: track.channelName,
-            duration: player.duration
+            duration: duration
         ) { [weak self] lyrics in
             guard let self, self.player.current?.id == trackId else {
                 return
             }
             AppLog.player(
-                "lyrics for \(trackId) (\(Int(self.player.duration))s): "
+                "lyrics for \(trackId) (\(Int(duration))s): "
                     + (lyrics.map {
                         "\($0.lines.count) lines, synced=\($0.isSynced), \($0.source), offset \($0.offset)"
                     } ?? "none")
