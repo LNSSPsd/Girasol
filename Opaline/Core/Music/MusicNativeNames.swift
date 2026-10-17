@@ -12,10 +12,16 @@ enum MusicNativeNames {
     /// the player's queue take them over.
     static let didLearnNotification = Notification.Name("MusicNativeNamesDidLearn")
 
-    private static let artistsKey = "musicNativeNames_artists"
-    private static let albumsKey = "musicNativeNames_albums"
+    /// "2": the first names took every link of a Japanese answer, foreign
+    /// artists' katakana included; they are dropped and learned again.
+    private static let artistsKey = "musicNativeNames_artists2"
+    private static let albumsKey = "musicNativeNames_albums2"
     private static let lock = NSLock()
-    private static var artists = UserDefaults.standard.dictionary(forKey: artistsKey) as? [String: String] ?? [:]
+    private static var artists: [String: String] = {
+        UserDefaults.standard.removeObject(forKey: "musicNativeNames_artists")
+        UserDefaults.standard.removeObject(forKey: "musicNativeNames_albums")
+        return UserDefaults.standard.dictionary(forKey: artistsKey) as? [String: String] ?? [:]
+    }()
     private static var albums = UserDefaults.standard.dictionary(forKey: albumsKey) as? [String: String] ?? [:]
     /// Artists asked about: once each per launch, found or not.
     private static var asked: Set<String> = []
@@ -55,26 +61,54 @@ enum MusicNativeNames {
 
     // MARK: - Learning
 
-    /// Every artist and album link in a Japanese answer, by page type
-    /// (which no language changes).
-    static func learn(from json: Any) {
+    /// The artist and album links of a Japanese answer, by page type (which
+    /// no language changes), but only those of `songs`: the tracks whose
+    /// English title is Japanese. In Japanese, YouTube Music writes every
+    /// foreign artist in katakana and translates their titles too (an
+    /// American singer's name and song titles come out in katakana),
+    /// so nothing in that answer tells a Japanese song from a foreign one;
+    /// the English answer does — it keeps only Japanese songs' own titles.
+    static func learn(from json: Any, songs: Set<String>) {
         var found: (artists: [String: String], albums: [String: String]) = ([:], [:])
-        collectLinks(in: json, into: &found)
+        collectLinks(in: json, japanese: false, songs: songs, into: &found)
         store(artists: found.artists, albums: found.albums)
     }
 
-    static func learn(album browseId: String, title: String) {
-        store(artists: [:], albums: [browseId: title])
+    /// A Japanese album page's own title and artist.
+    static func learn(album browseId: String, title: String, artist: (browseId: String, name: String)?) {
+        store(artists: artist.map { [$0.browseId: $0.name] } ?? [:], albums: [browseId: title])
     }
 
-    private static func collectLinks(in value: Any, into found: inout (artists: [String: String], albums: [String: String])) {
+    /// Renderers of one song, whose video id says whether the links inside
+    /// it are Japanese names.
+    private static let itemRenderers: Set<String> = [
+        "musicResponsiveListItemRenderer", "musicTwoRowItemRenderer", "playlistPanelVideoRenderer",
+        "musicCardShelfRenderer",
+    ]
+
+    /// `japanese`: inside the item of one of `songs`.
+    private static func collectLinks(
+        in value: Any, japanese: Bool, songs: Set<String>,
+        into found: inout (artists: [String: String], albums: [String: String])
+    ) {
         if let array = value as? [Any] {
             for element in array {
-                collectLinks(in: element, into: &found)
+                collectLinks(in: element, japanese: japanese, songs: songs, into: &found)
             }
             return
         }
         guard let dict = value as? [String: Any] else {
+            return
+        }
+        for (key, child) in dict {
+            if itemRenderers.contains(key), let item = child as? [String: Any] {
+                let japanese = videoId(of: item).map { songs.contains($0) } ?? false
+                collectLinks(in: item, japanese: japanese, songs: songs, into: &found)
+            } else {
+                collectLinks(in: child, japanese: japanese, songs: songs, into: &found)
+            }
+        }
+        guard japanese else {
             return
         }
         if let text = dict["text"] as? String,
@@ -89,9 +123,18 @@ enum MusicNativeNames {
                 found.albums[id] = text
             }
         }
-        for child in dict.values {
-            collectLinks(in: child, into: &found)
+    }
+
+    /// The song an item stands for; nil for albums, playlists, artists.
+    private static func videoId(of item: [String: Any]) -> String? {
+        if let id = (item["playlistItemData"] as? [String: Any])?["videoId"] as? String ?? item["videoId"] as? String
+            ?? item.digString("navigationEndpoint", "watchEndpoint", "videoId") {
+            return id
         }
+        let column = (item["flexColumns"] as? [[String: Any]])?.first?["musicResponsiveListItemFlexColumnRenderer"]
+        let title = (column as? [String: Any])?["text"] ?? item["title"]
+        let runs = (title as? [String: Any])?["runs"] as? [[String: Any]] ?? []
+        return runs.first?.digString("navigationEndpoint", "watchEndpoint", "videoId")
     }
 
     private static func store(artists newArtists: [String: String], albums newAlbums: [String: String]) {

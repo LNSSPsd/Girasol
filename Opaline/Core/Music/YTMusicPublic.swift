@@ -1127,15 +1127,17 @@ enum YTMusicPublic {
                 let (artist, album) = bylineLinks(Array(columnRuns.dropFirst().joined()))
                 names[videoId] = NativeNames(title: title, artist: artist, album: album)
             }
-            MusicNativeNames.learn(from: json)
+            MusicNativeNames.learn(from: json, songs: Set(tracks.filter { hasJapanese($0.title) }.map(\.id)))
             AppLog.innertube("ytmusic \(tag): \(names.count) names")
             completion(names, json)
         }
     }
 
     /// The track under its Japanese names, where there are any.
+    /// Only a song whose English title is Japanese: a foreign song's
+    /// Japanese names are katakana and translations (`MusicNativeNames.learn`).
     private static func native(_ video: Video, _ names: [String: NativeNames]) -> Video {
-        guard let found = names[video.id] else {
+        guard hasJapanese(video.title), let found = names[video.id] else {
             return MusicNativeNames.renamed(video)
         }
         let links = MusicTrackLinks.links(of: video.id)
@@ -1168,10 +1170,21 @@ enum YTMusicPublic {
         let header = firstDict(named: "musicResponsiveHeaderRenderer", in: json)
             ?? firstDict(named: "musicDetailHeaderRenderer", in: json)
         let title = texts(header?["title"])
-        if !title.isEmpty {
-            MusicNativeNames.learn(album: browseId, title: title)
+        // The header's names only for a Japanese album (most English track
+        // titles Japanese): a foreign one's are katakana and translations.
+        guard page.tracks.filter({ hasJapanese($0.title) }).count * 2 > page.tracks.count else {
+            return MusicAlbumPage(
+                title: page.title, subtitle: page.subtitle, artist: page.artist,
+                thumbnailURL: page.thumbnailURL, playlistId: page.playlistId,
+                tracks: page.tracks.map { native($0, names) }
+            )
         }
         let (artist, _) = bylineLinks(runs(header?["straplineTextOne"]) + runs(header?["subtitle"]))
+        if !title.isEmpty {
+            MusicNativeNames.learn(
+                album: browseId, title: title, artist: artist.map { ($0.browseId, $0.name) }
+            )
+        }
         let pageArtist = artist ?? page.artist
         let album = MusicAlbumRef(
             browseId: browseId, title: title.isEmpty ? page.title : title, subtitle: page.subtitle,
