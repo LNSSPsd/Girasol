@@ -21,7 +21,7 @@ enum MusicTrackMenu {
         ownPlaylist: OwnPlaylist? = nil
     ) {
         let theme = ThemeManager.shared
-        let sheet = OPTrackSheet(title: track.title, subtitle: track.channelName)
+        let sheet = OPTrackSheet(title: track.title, subtitle: track.musicArtist)
         let artwork = ThumbnailImageView(frame: .zero)
         artwork.contentMode = .scaleAspectFill
         artwork.backgroundColor = theme.surface

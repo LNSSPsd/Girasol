@@ -156,7 +156,7 @@ final class MusicPlaylistEditViewController: UITableViewController, UITextFieldD
                 return UITableViewCell()
             }
             let track = tracks[indexPath.row]
-            cell.configure(title: track.title, subtitle: track.channelName, artworkURL: track.thumbnailURL)
+            cell.configure(title: track.title, subtitle: track.musicArtist, artworkURL: track.thumbnailURL)
             cell.backgroundColor = theme.surface
             return cell
         default:

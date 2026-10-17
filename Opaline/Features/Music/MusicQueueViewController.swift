@@ -70,7 +70,7 @@ final class MusicQueueViewController: MusicListViewController {
         let track = tracks(in: indexPath.section)[indexPath.row]
         (cell as? MusicItemCell)?.configure(
             title: track.title,
-            subtitle: downloadMark(for: track.id) + track.channelName,
+            subtitle: downloadMark(for: track.id) + track.musicArtist,
             artworkURL: track.thumbnailURL,
             isCurrent: indexPath.section == Section.nowPlaying.rawValue
         )

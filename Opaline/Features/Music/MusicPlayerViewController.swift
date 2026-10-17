@@ -212,7 +212,7 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         }
         let theme = ThemeManager.shared
         titleLabel.text = track.title
-        artistLabel.text = track.channelName
+        artistLabel.text = track.musicArtist
         if shownTrackId != track.id, let url = player.artworkURL(for: track) {
             shownTrackId = track.id
             artwork.setImage(url: url)

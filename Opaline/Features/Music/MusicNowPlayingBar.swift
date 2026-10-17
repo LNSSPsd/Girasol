@@ -91,7 +91,7 @@ final class MusicNowPlayingBar: UIView {
             return
         }
         titleLabel.text = track.title
-        artistLabel.text = player.isLoading ? "Loading…" : track.channelName
+        artistLabel.text = player.isLoading ? "Loading…" : track.musicArtist
         if shownTrackId != track.id, let url = player.artworkURL(for: track) {
             shownTrackId = track.id
             artwork.setImage(url: url)

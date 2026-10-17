@@ -199,7 +199,7 @@ final class MusicArtistViewController: MusicListViewController {
         case .song(let song):
             cell.configure(
                 title: song.title,
-                subtitle: downloadMark(for: song.id) + [song.channelName, song.duration ?? ""]
+                subtitle: downloadMark(for: song.id) + [song.musicArtist, song.duration ?? ""]
                     .filter { !$0.isEmpty }.joined(separator: " · "),
                 artworkURL: song.thumbnailURL,
                 isCurrent: MusicPlayer.shared.isCurrent(song.id)

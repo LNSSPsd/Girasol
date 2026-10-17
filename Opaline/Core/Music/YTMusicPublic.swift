@@ -183,6 +183,7 @@ enum YTMusicPublic {
                 }
                 return video
             }
+            MusicNativeNames.lookUp(songs)
             nativeNames(of: songs, endpoint: "search", body: body, tag: "search ja") { names, _ in
                 let entries = entries.map { entry -> MusicEntry in
                     guard case let .song(video) = entry else {

@@ -117,33 +117,61 @@ enum MusicNativeNames {
 
     // MARK: - Asking
 
+    /// Artist ids waiting to be asked, in order.
+    private static var waiting: [String] = []
+    private static var isAsking = false
+
     /// The artists of Japanese-titled tracks not known yet: each one's
-    /// artist page in Japanese, at most 8 per call (the rest come with the
-    /// next one), each artist once per launch.
+    /// artist page in Japanese, one after another, each artist once per
+    /// launch.
     static func lookUp(_ tracks: [Video]) {
         guard isEnabled else {
             return
         }
         lock.lock()
-        var ids: [String] = []
-        for track in tracks where ids.count < 8 {
+        for track in tracks {
             guard let id = track.channelId, id.hasPrefix("UC"), artists[id] == nil, !asked.contains(id),
                   YTMusicPublic.hasJapanese(track.title)
             else {
                 continue
             }
             asked.insert(id)
-            ids.append(id)
+            waiting.append(id)
         }
+        let start = !isAsking && !waiting.isEmpty
+        isAsking = isAsking || start
         lock.unlock()
-        for id in ids {
-            YTMusicPublic.post("browse", ["browseId": id], tag: "artist ja", hl: "ja") { json in
-                let header = (json?["header"] as? [String: Any])?.values.first as? [String: Any]
-                let runs = (header?["title"] as? [String: Any])?["runs"] as? [[String: Any]] ?? []
-                let name = runs.compactMap { $0["text"] as? String }.joined()
-                AppLog.innertube("ytmusic artist \(id) in Japanese: \(name.isEmpty ? "none" : name)")
-                store(artists: [id: name], albums: [:])
-            }
+        if start {
+            askNext()
         }
+    }
+
+    private static func askNext() {
+        lock.lock()
+        guard !waiting.isEmpty else {
+            isAsking = false
+            lock.unlock()
+            return
+        }
+        let id = waiting.removeFirst()
+        lock.unlock()
+        YTMusicPublic.post("browse", ["browseId": id], tag: "artist ja", hl: "ja") { json in
+            let header = (json?["header"] as? [String: Any])?.values.first as? [String: Any]
+            let runs = (header?["title"] as? [String: Any])?["runs"] as? [[String: Any]] ?? []
+            let name = runs.compactMap { $0["text"] as? String }.joined()
+            AppLog.innertube("ytmusic artist \(id) in Japanese: \(name.isEmpty ? "none" : name)")
+            store(artists: [id: name], albums: [:])
+            askNext()
+        }
+    }
+}
+
+extension Video {
+    /// The artist as music mode shows it: the Japanese name when it is
+    /// known (`MusicNativeNames`), whichever list the song came from —
+    /// playlists and history come from the TV client, which names
+    /// "<Artist> - Topic" under the same channel id.
+    var musicArtist: String {
+        MusicNativeNames.artist(channelId) ?? channelName
     }
 }

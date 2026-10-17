@@ -69,6 +69,12 @@ final class MusicHomeViewController: MusicListViewController {
         }
         shelves += remote
         self.shelves = shelves
+        MusicNativeNames.lookUp(shelves.flatMap { $0.entries }.compactMap { entry -> Video? in
+            guard case .song(let video) = entry else {
+                return nil
+            }
+            return video
+        })
         showMessage(
             shelves.isEmpty
                 ? "Albums and playlists you play show up here." : nil
@@ -113,7 +119,7 @@ final class MusicHomeViewController: MusicListViewController {
         case .song(let video):
             cell.configure(
                 title: video.title,
-                subtitle: downloadMark(for: video.id) + video.channelName,
+                subtitle: downloadMark(for: video.id) + video.musicArtist,
                 artworkURL: video.thumbnailURL,
                 isCurrent: MusicPlayer.shared.isCurrent(video.id)
             )

@@ -49,6 +49,12 @@ class MusicListViewController: UIViewController, UITableViewDataSource, UITableV
         )
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(playerDidChange),
+            name: MusicNativeNames.didLearnNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(applyTheme),
             name: ThemeManager.didChangeNotification,
             object: nil

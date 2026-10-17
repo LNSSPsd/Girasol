@@ -143,7 +143,7 @@ final class MusicSearchViewController: MusicListViewController, UISearchBarDeleg
         case .song(let video):
             cell.configure(
                 title: video.title,
-                subtitle: downloadMark(for: video.id) + video.channelName,
+                subtitle: downloadMark(for: video.id) + video.musicArtist,
                 artworkURL: video.thumbnailURL,
                 isCurrent: MusicPlayer.shared.isCurrent(video.id)
             )

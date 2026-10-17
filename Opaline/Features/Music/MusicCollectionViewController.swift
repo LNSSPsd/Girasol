@@ -276,6 +276,7 @@ final class MusicCollectionViewController: MusicListViewController {
 
     private func showTracks(_ list: [Video], entryIds ids: [String?]? = nil) {
         tracks = list
+        MusicNativeNames.lookUp(list)
         entryIds = ids ?? Array(repeating: nil, count: list.count)
         tableView.reloadData()
         playButton.isEnabled = !tracks.isEmpty
@@ -466,6 +467,7 @@ final class MusicCollectionViewController: MusicListViewController {
                     if let next = page.continuation {
                         self.loadPage(continuation: next)
                     } else {
+                        MusicNativeNames.lookUp(self.tracks)
                         self.checkOwnership()
                         if self.isAlbum {
                             MusicSongVersions.albumTracks(self.tracks, playlistId: self.collection.id, title: self.collection.title) { [weak self] tracks in
@@ -533,7 +535,7 @@ final class MusicCollectionViewController: MusicListViewController {
         forRowAt indexPath: IndexPath
     ) {
         let track = tracks[indexPath.row]
-        let subtitle = downloadMark(for: track.id) + [track.channelName, track.duration ?? ""]
+        let subtitle = downloadMark(for: track.id) + [track.musicArtist, track.duration ?? ""]
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
         guard let cell = cell as? MusicItemCell else {
