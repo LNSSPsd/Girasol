@@ -6,6 +6,9 @@ static NSString *const OPSearchAsYouTypeKey = @"music_searchAsYouType";
 static NSString *const OPAccountRecommendationsKey = @"music_accountRecommendations";
 static NSString *const OPSongVersionsKey = @"music_songVersions";
 static NSString *const OPOriginalTitlesKey = @"music_originalTitles";
+static NSString *const OPLevelVolumeKey = @"music_levelVolume";
+
+NSNotificationName const OPMusicSettingsDidChangeNotification = @"OPMusicSettingsDidChangeNotification";
 
 @implementation OPMusicSettings
 
@@ -59,6 +62,16 @@ static NSString *const OPOriginalTitlesKey = @"music_originalTitles";
 
 + (void)setOriginalTitles:(BOOL)originalTitles {
 	[NSUserDefaults.standardUserDefaults setBool:originalTitles forKey:OPOriginalTitlesKey];
+}
+
++ (BOOL)levelVolume {
+	NSNumber *stored = [NSUserDefaults.standardUserDefaults objectForKey:OPLevelVolumeKey];
+	return stored ? stored.boolValue : YES;
+}
+
++ (void)setLevelVolume:(BOOL)levelVolume {
+	[NSUserDefaults.standardUserDefaults setBool:levelVolume forKey:OPLevelVolumeKey];
+	[NSNotificationCenter.defaultCenter postNotificationName:OPMusicSettingsDidChangeNotification object:nil];
 }
 
 + (NSArray<NSNumber *> *)cacheChoices {

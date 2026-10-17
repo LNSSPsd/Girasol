@@ -183,6 +183,13 @@ final class MusicPlayer: NSObject {
         super.init()
         player.actionAtItemEnd = .advance
         configureFacade()
+        NotificationCenter.default.addObserver(
+            forName: .OPMusicSettingsDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            if let self, let track = self.current {
+                self.applyLevel(for: track)
+            }
+        }
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 1, preferredTimescale: 600),
             queue: .main
@@ -874,6 +881,7 @@ final class MusicPlayer: NSObject {
             player.removeAllItems()
             player.insert(ready.item, after: nil)
         }
+        applyLevel(for: track)
         player.play()
         // As `load` does: a preloaded last track must still start the mix,
         // or playback stops after it.
@@ -882,6 +890,16 @@ final class MusicPlayer: NSObject {
         saveSession()
         saveContext()
         postChange()
+    }
+
+    /// Louder songs turned down to YouTube's target (setting "Same volume
+    /// for every song"); on both start paths, the preloaded one included.
+    func applyLevel(for track: Video) {
+        let volume = OPMusicSettings.levelVolume ? PlayerLoudness.volume(for: track.id) : 1
+        if player.volume != volume {
+            AppLog.player(String(format: "music: volume %.2f for %@", volume, track.id))
+        }
+        player.volume = volume
     }
 
     private func beginNowPlaying(_ track: Video, duration: Double?) {
@@ -1068,6 +1086,7 @@ extension MusicPlayer: PlaybackContext {
         if let resumeAt {
             player.seek(to: resumeAt)
         }
+        applyLevel(for: track)
         player.playImmediately(atRate: 1)
         let attached = CACurrentMediaTime()
         isLoading = false

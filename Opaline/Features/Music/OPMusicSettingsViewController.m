@@ -7,6 +7,7 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	OPSectionSearch,
 	OPSectionSongs,
 	OPSectionTitles,
+	OPSectionLevel,
 	OPSectionCache,
 	OPSectionAmount,
 	OPSectionAccount,
@@ -61,6 +62,7 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	case OPSectionSearch:
 	case OPSectionSongs:
 	case OPSectionTitles:
+	case OPSectionLevel:
 	case OPSectionCache:
 		return 1;
 	case OPSectionAmount:
@@ -88,6 +90,9 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		return @"In English, YouTube Music names Japanese album tracks twice (original and romanized). On: only the "
 		       @"original title. Applies to lists loaded from now on; artist and album names stay as YouTube Music "
 		       @"gives them.";
+	if (section == OPSectionLevel)
+		return @"Songs mastered louder than YouTube's loudness target are turned down to it, as YouTube's own "
+		       @"players do, so one song does not blast after a quiet one.";
 	if (section == OPSectionCache)
 		return @"Loads the next song before the current one ends, so a tunnel or a dead zone does not stop the "
 		       @"music.";
@@ -140,6 +145,16 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		toggle.on = OPMusicSettings.originalTitles;
 		toggle.onTintColor = self.accentColor;
 		[toggle addTarget:self action:@selector(titlesToggled:) forControlEvents:UIControlEventValueChanged];
+		cell.accessoryView = toggle;
+		break;
+	}
+	case OPSectionLevel: {
+		cell.textLabel.text = @"Same volume for every song";
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+		UISwitch *toggle = [UISwitch new];
+		toggle.on = OPMusicSettings.levelVolume;
+		toggle.onTintColor = self.accentColor;
+		[toggle addTarget:self action:@selector(levelToggled:) forControlEvents:UIControlEventValueChanged];
 		cell.accessoryView = toggle;
 		break;
 	}
@@ -202,6 +217,10 @@ typedef NS_ENUM(NSInteger, OPSection) {
 
 - (void)titlesToggled:(UISwitch *)toggle {
 	OPMusicSettings.originalTitles = toggle.on;
+}
+
+- (void)levelToggled:(UISwitch *)toggle {
+	OPMusicSettings.levelVolume = toggle.on;
 }
 
 - (void)searchToggled:(UISwitch *)toggle {

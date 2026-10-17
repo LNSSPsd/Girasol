@@ -26,6 +26,7 @@ extension InnertubeClient {
             formats: formats,
             adaptive: adaptive
         )
+        PlayerLoudness.record(from: json, audioFormat: selected.audio)
         return assemblePlayback(
             json: json,
             streamingData: sd,
