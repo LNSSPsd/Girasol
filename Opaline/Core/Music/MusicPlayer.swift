@@ -195,10 +195,10 @@ final class MusicPlayer: NSObject {
         NotificationCenter.default.addObserver(
             forName: .OPSleepTimerDidChange, object: nil, queue: .main
         ) { [weak self] _ in
-            // Waiting for the song's end: the queue player must stop there
-            // instead of moving on to the preloaded song.
-            self?.player.actionAtItemEnd = OPSleepTimer.endOfSong ? .pause : .advance
+            self?.updateItemEndAction()
             self?.endCrossfade()
+            // Changed or turned off mid-fade: back to the full level.
+            self?.sleepFadeTick()
         }
         NotificationCenter.default.addObserver(
             forName: MusicNativeNames.didLearnNotification, object: nil, queue: .main
@@ -233,7 +233,6 @@ final class MusicPlayer: NSObject {
             observed.removeTimeObserver(timeObserver)
         }
         observed = player
-        player.actionAtItemEnd = OPSleepTimer.endOfSong ? .pause : .advance
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 1, preferredTimescale: 600),
             queue: .main
@@ -242,6 +241,8 @@ final class MusicPlayer: NSObject {
             self?.saveSessionIfDue()
             self?.prefetchIfDue()
             self?.scheduleCrossfadeIfDue()
+            self?.updateItemEndAction()
+            self?.startSleepFadeIfDue()
         }
         rateObservation = player.observe(\.timeControlStatus) { [weak self] _, _ in
             DispatchQueue.main.async {
@@ -631,17 +632,9 @@ final class MusicPlayer: NSObject {
     // MARK: - Transport
 
     func togglePlayPause() {
-        // Play pressed while the sleep timer fades out, or before the song
-        // it held back is ready: the user wins.
+        // Play pressed before the song the sleep timer held back is ready:
+        // the user wins.
         endCrossfade()
-        if fadeTimer?.isValid == true {
-            fadeTimer?.invalidate()
-            if let current {
-                applyLevel(for: current)
-            }
-            postChange()
-            return
-        }
         holdNextStart = false
         if player.timeControlStatus == .paused {
             if player.currentItem == nil, isActive, !isLoading {
@@ -688,7 +681,8 @@ final class MusicPlayer: NSObject {
     func stop() {
         AudioOnlyMode.soundOnly = false
         endCrossfade()
-        fadeTimer?.invalidate()
+        sleepFadeTimer?.invalidate()
+        sleepFadeTimer = nil
         holdNextStart = false
         reporter.stop()
         token.cancel()
@@ -774,9 +768,10 @@ final class MusicPlayer: NSObject {
         guard let item = note.object as? AVPlayerItem, item === playingItem else {
             return
         }
-        if OPSleepTimer.endOfSong {
-            // The sleep timer waited for this song: the next one is made
-            // ready, paused, so Play goes on from there.
+        if stopsAfterCurrent {
+            // The sleep timer waited for this song (or for the album or
+            // playlist it ends): the next one is made ready, paused, so Play
+            // goes on from there.
             holdNextStart = true
             OPSleepTimer.songDidEnd()
             advance(userInitiated: false)
@@ -965,40 +960,89 @@ final class MusicPlayer: NSObject {
         postChange()
     }
 
-    /// The sleep timer ran out: the music fades over a few seconds and
-    /// pauses. Ending with a song, it is paused already.
+    /// The sleep timer ran out. A timed one has faded the music out over
+    /// its last minute already (`sleepFadeTick`); ending with a song, it is
+    /// paused already.
     private func sleep() {
         AppLog.player("music: sleep timer, pausing")
         endCrossfade()
-        fadeTimer?.invalidate()
-        guard player.rate > 0 else {
-            postChange()
+        sleepFadeTimer?.invalidate()
+        sleepFadeTimer = nil
+        player.pause()
+        if let current {
+            applyLevel(for: current)
+        }
+        postChange()
+    }
+
+    /// How far the sleep timer's fade has brought the volume down: 1 until
+    /// its last minute, then down to 0 — squared, so it sounds even rather
+    /// than dropping off at the end.
+    private var sleepFactor: Float {
+        guard let fire = OPSleepTimer.fireDate else {
+            return 1
+        }
+        let left = fire.timeIntervalSinceNow / OPSleepTimer.fadeSeconds
+        return left >= 1 ? 1 : Float(pow(max(left, 0), 2))
+    }
+
+    private var sleepFadeTimer: Timer?
+
+    /// From the periodic observer: within the fade, a finer timer takes over.
+    private func startSleepFadeIfDue() {
+        guard sleepFadeTimer == nil, sleepFactor < 1 else {
             return
         }
-        let start = player.volume
-        var step = 0
-        let steps = 40
-        fadeTimer = Timer.scheduledTimer(withTimeInterval: Self.sleepFade / Double(steps), repeats: true) { [weak self] timer in
-            guard let self else {
-                timer.invalidate()
-                return
-            }
-            step += 1
-            self.player.volume = start * Float(steps - step) / Float(steps)
-            guard step >= steps else {
-                return
-            }
-            timer.invalidate()
-            self.player.pause()
-            if let track = self.current {
-                self.applyLevel(for: track)
-            }
-            self.postChange()
+        AppLog.player("music: sleep timer, fading out")
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.sleepFadeTick()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        sleepFadeTimer = timer
+    }
+
+    /// The playing song at its level times the fade; ends with the fade.
+    private func sleepFadeTick() {
+        if sleepFactor >= 1 {
+            sleepFadeTimer?.invalidate()
+            sleepFadeTimer = nil
+        }
+        // A crossfade sets the volumes itself, at the same factor.
+        if fade == nil, let current {
+            player.volume = targetVolume(for: current)
         }
     }
 
-    private static let sleepFade: TimeInterval = 5
-    private var fadeTimer: Timer?
+    /// Whether the queue player must stop at the end of this song instead
+    /// of moving on: the sleep timer waits for it, or for the end of the
+    /// album or playlist and nothing of it is left (what comes next is the
+    /// mix, or nothing).
+    private var stopsAfterCurrent: Bool {
+        if OPSleepTimer.endOfSong {
+            return true
+        }
+        guard OPSleepTimer.endOfContext, repeatMode != .all else {
+            return false
+        }
+        guard let next = nextTrack else {
+            return true
+        }
+        return queue.isEmpty && !context.contains { $0.id == next.id }
+    }
+
+    private func updateItemEndAction() {
+        let action: AVPlayer.ActionAtItemEnd = stopsAfterCurrent ? .pause : .advance
+        if player.actionAtItemEnd != action {
+            player.actionAtItemEnd = action
+        }
+    }
+
+    /// Whether "End of album/playlist" means anything: an album or playlist
+    /// is playing, not a radio or the mix after one.
+    var playsCollection: Bool {
+        radio == nil && !context.isEmpty
+    }
+
     /// The song after the one the sleep timer waited for: loaded, not played.
     private var holdNextStart = false
 
@@ -1050,7 +1094,7 @@ final class MusicPlayer: NSObject {
             return
         }
         let album = collectionId.map { $0.hasPrefix("MPREb") || $0.hasPrefix("OLAK5uy") } ?? false
-        guard player.rate > 0, !isLoading, repeatMode != .one, !OPSleepTimer.endOfSong, !holdNextStart,
+        guard player.rate > 0, !isLoading, repeatMode != .one, !stopsAfterCurrent, !holdNextStart,
               !(album && queue.isEmpty),
               let expected = nextTrack, prefetcher.isReady(for: expected)
         else {
@@ -1087,14 +1131,15 @@ final class MusicPlayer: NSObject {
     /// Equal-power curves, so the sum does not dip in the middle.
     private func beginFade(from outgoing: AVQueuePlayer, to track: Video, over seconds: TimeInterval) {
         let from = outgoing.volume
-        let target = OPMusicSettings.levelVolume ? PlayerLoudness.volume(for: track.id) : 1
         let steps = max(Int(seconds * 20), 1)
         var step = 0
         let timer = Timer(timeInterval: seconds / Double(steps), repeats: true) { [weak self] _ in
             step += 1
             let progress = min(Double(step) / Double(steps), 1)
             outgoing.volume = from * Float(cos(progress * .pi / 2))
-            self?.player.volume = target * Float(sin(progress * .pi / 2))
+            if let self {
+                self.player.volume = self.targetVolume(for: track) * Float(sin(progress * .pi / 2))
+            }
             if step >= steps {
                 self?.endCrossfade()
             }
@@ -1143,11 +1188,16 @@ final class MusicPlayer: NSObject {
     /// Louder songs turned down to YouTube's target (setting "Same volume
     /// for every song"); on both start paths, the preloaded one included.
     func applyLevel(for track: Video) {
-        let volume = OPMusicSettings.levelVolume ? PlayerLoudness.volume(for: track.id) : 1
+        let volume = targetVolume(for: track)
         if player.volume != volume {
             AppLog.player(String(format: "music: volume %.2f for %@", volume, track.id))
         }
         player.volume = volume
+    }
+
+    /// The song's level, times the sleep timer's fade when one is running.
+    private func targetVolume(for track: Video) -> Float {
+        (OPMusicSettings.levelVolume ? PlayerLoudness.volume(for: track.id) : 1) * sleepFactor
     }
 
     private func beginNowPlaying(_ track: Video, duration: Double?) {

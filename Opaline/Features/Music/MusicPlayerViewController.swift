@@ -427,7 +427,8 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         present(nav, animated: true)
     }
 
-    /// Sleep timer: a few lengths, the end of this song, or off.
+    /// Sleep timer: a few lengths (fading out over the last minute), the end
+    /// of this song or of the album/playlist, or off.
     @objc
     private func sleepTapped() {
         Feedback.tap()
@@ -448,6 +449,16 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         }
         endOfSong.checked = OPSleepTimer.endOfSong
         actions.append(endOfSong)
+        // Only where there is an end: not a radio, nor the mix after one.
+        if player.playsCollection || OPSleepTimer.endOfContext {
+            let endOfContext = OPSheetAction(
+                title: "End of album/playlist", symbol: "music.note.list", destructive: false
+            ) {
+                OPSleepTimer.startForEndOfContext()
+            }
+            endOfContext.checked = OPSleepTimer.endOfContext
+            actions.append(endOfContext)
+        }
         if OPSleepTimer.isArmed {
             actions.append(OPSheetAction(title: "Turn off", symbol: "moon", destructive: true) {
                 OPSleepTimer.cancel()

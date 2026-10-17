@@ -6,11 +6,20 @@ NSNotificationName const OPSleepTimerDidChangeNotification = @"OPSleepTimerDidCh
 static NSTimer *OPTimer;
 static NSDate *OPFireDate;
 static BOOL OPEndOfSong;
+static BOOL OPEndOfContext;
 
 @implementation OPSleepTimer
 
 + (BOOL)isArmed {
-	return OPFireDate != nil || OPEndOfSong;
+	return OPFireDate != nil || OPEndOfSong || OPEndOfContext;
+}
+
++ (BOOL)endOfContext {
+	return OPEndOfContext;
+}
+
++ (NSTimeInterval)fadeSeconds {
+	return 60;
 }
 
 + (BOOL)endOfSong {
@@ -30,6 +39,7 @@ static BOOL OPEndOfSong;
 	OPTimer = nil;
 	OPFireDate = nil;
 	OPEndOfSong = NO;
+	OPEndOfContext = NO;
 }
 
 + (void)changed {
@@ -56,6 +66,12 @@ static BOOL OPEndOfSong;
 	[self changed];
 }
 
++ (void)startForEndOfContext {
+	[self reset];
+	OPEndOfContext = YES;
+	[self changed];
+}
+
 + (void)cancel {
 	if (!self.isArmed)
 		return;
@@ -64,7 +80,7 @@ static BOOL OPEndOfSong;
 }
 
 + (void)songDidEnd {
-	if (OPEndOfSong)
+	if (OPEndOfSong || OPEndOfContext)
 		[self fire];
 }
 
@@ -77,6 +93,8 @@ static BOOL OPEndOfSong;
 + (NSString *)statusText {
 	if (OPEndOfSong)
 		return @"Stops after this song";
+	if (OPEndOfContext)
+		return @"Stops at the end of the album or playlist";
 	if (!OPFireDate)
 		return @"Off";
 	NSInteger minutes = (NSInteger)ceil(MAX(OPFireDate.timeIntervalSinceNow, 0) / 60);
