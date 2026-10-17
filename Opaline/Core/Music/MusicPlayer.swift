@@ -184,6 +184,18 @@ final class MusicPlayer: NSObject {
         player.actionAtItemEnd = .advance
         configureFacade()
         NotificationCenter.default.addObserver(
+            forName: .OPSleepTimerDidFire, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.sleep()
+        }
+        NotificationCenter.default.addObserver(
+            forName: .OPSleepTimerDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            // Waiting for the song's end: the queue player must stop there
+            // instead of moving on to the preloaded song.
+            self?.player.actionAtItemEnd = OPSleepTimer.endOfSong ? .pause : .advance
+        }
+        NotificationCenter.default.addObserver(
             forName: .OPMusicSettingsDidChange, object: nil, queue: .main
         ) { [weak self] _ in
             if let self, let track = self.current {
@@ -598,6 +610,17 @@ final class MusicPlayer: NSObject {
     // MARK: - Transport
 
     func togglePlayPause() {
+        // Play pressed while the sleep timer fades out, or before the song
+        // it held back is ready: the user wins.
+        if fadeTimer?.isValid == true {
+            fadeTimer?.invalidate()
+            if let current {
+                applyLevel(for: current)
+            }
+            postChange()
+            return
+        }
+        holdNextStart = false
         if player.timeControlStatus == .paused {
             if player.currentItem == nil, isActive, !isLoading {
                 // A restored session: picks up where it was left.
@@ -639,6 +662,8 @@ final class MusicPlayer: NSObject {
 
     func stop() {
         AudioOnlyMode.soundOnly = false
+        fadeTimer?.invalidate()
+        holdNextStart = false
         reporter.stop()
         token.cancel()
         facade.reset()
@@ -721,6 +746,14 @@ final class MusicPlayer: NSObject {
     @objc
     private func itemDidFinish(_ note: Notification) {
         guard let item = note.object as? AVPlayerItem, item === playingItem else {
+            return
+        }
+        if OPSleepTimer.endOfSong {
+            // The sleep timer waited for this song: the next one is made
+            // ready, paused, so Play goes on from there.
+            holdNextStart = true
+            OPSleepTimer.songDidEnd()
+            advance(userInitiated: false)
             return
         }
         if repeatMode == .one {
@@ -882,7 +915,12 @@ final class MusicPlayer: NSObject {
             player.insert(ready.item, after: nil)
         }
         applyLevel(for: track)
-        player.play()
+        if holdNextStart {
+            holdNextStart = false
+            player.pause()
+        } else {
+            player.play()
+        }
         // As `load` does: a preloaded last track must still start the mix,
         // or playback stops after it.
         topUpRadioIfNeeded()
@@ -891,6 +929,42 @@ final class MusicPlayer: NSObject {
         saveContext()
         postChange()
     }
+
+    /// The sleep timer ran out: the music fades over a few seconds and
+    /// pauses. Ending with a song, it is paused already.
+    private func sleep() {
+        AppLog.player("music: sleep timer, pausing")
+        fadeTimer?.invalidate()
+        guard player.rate > 0 else {
+            postChange()
+            return
+        }
+        let start = player.volume
+        var step = 0
+        let steps = 40
+        fadeTimer = Timer.scheduledTimer(withTimeInterval: Self.sleepFade / Double(steps), repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            step += 1
+            self.player.volume = start * Float(steps - step) / Float(steps)
+            guard step >= steps else {
+                return
+            }
+            timer.invalidate()
+            self.player.pause()
+            if let track = self.current {
+                self.applyLevel(for: track)
+            }
+            self.postChange()
+        }
+    }
+
+    private static let sleepFade: TimeInterval = 5
+    private var fadeTimer: Timer?
+    /// The song after the one the sleep timer waited for: loaded, not played.
+    private var holdNextStart = false
 
     /// Louder songs turned down to YouTube's target (setting "Same volume
     /// for every song"); on both start paths, the preloaded one included.
@@ -1087,7 +1161,12 @@ extension MusicPlayer: PlaybackContext {
             player.seek(to: resumeAt)
         }
         applyLevel(for: track)
-        player.playImmediately(atRate: 1)
+        if holdNextStart {
+            holdNextStart = false
+            player.pause()
+        } else {
+            player.playImmediately(atRate: 1)
+        }
         let attached = CACurrentMediaTime()
         isLoading = false
         beginNowPlaying(track, duration: prepared.duration)

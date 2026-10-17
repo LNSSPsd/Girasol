@@ -24,6 +24,7 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
     private let lyricsView = OPLyricsView()
     private let downloadButton = UIButton(type: .system)
     private let queueButton = UIButton(type: .system)
+    private let sleepButton = UIButton(type: .system)
     private let moreButton = UIButton(type: .system)
     private var lyricsTrackId: String?
 
@@ -87,7 +88,8 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         setup(queueButton, symbol: "list.bullet", size: 20, action: #selector(queueTapped))
         setup(moreButton, symbol: "ellipsis", size: 20, action: #selector(moreTapped))
-        for button in [queueButton, moreButton] {
+        setup(sleepButton, symbol: "moon", size: 20, action: #selector(sleepTapped))
+        for button in [queueButton, sleepButton, moreButton] {
             button.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(button)
         }
@@ -109,6 +111,8 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
             moreButton.trailingAnchor.constraint(equalTo: downloadButton.leadingAnchor),
             queueButton.centerYAnchor.constraint(equalTo: downloadButton.centerYAnchor),
             queueButton.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 16),
+            sleepButton.centerYAnchor.constraint(equalTo: downloadButton.centerYAnchor),
+            sleepButton.leadingAnchor.constraint(equalTo: queueButton.trailingAnchor),
             // Clear of the top buttons, not just the grabber.
             artwork.topAnchor.constraint(equalTo: downloadButton.bottomAnchor, constant: 16),
             artwork.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -152,6 +156,12 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
             self,
             selector: #selector(refresh),
             name: DownloadStore.didChangeNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refresh),
+            name: .OPSleepTimerDidChange,
             object: nil
         )
         refresh()
@@ -225,6 +235,8 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         let playing = player.player.timeControlStatus != .paused
         setSymbol(playButton, playing ? "pause.fill" : "play.fill", size: 44)
         shuffleButton.tintColor = player.isShuffled ? theme.accent : theme.secondaryText
+        setSymbol(sleepButton, OPSleepTimer.isArmed ? "moon.fill" : "moon", size: 20)
+        sleepButton.tintColor = OPSleepTimer.isArmed ? theme.accent : theme.primaryText
         switch player.repeatMode {
         case .off:
             setSymbol(repeatButton, "repeat", size: 20)
@@ -413,6 +425,36 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         Feedback.tap()
         let nav = RotatingNavigationController(rootViewController: MusicQueueViewController())
         present(nav, animated: true)
+    }
+
+    /// Sleep timer: a few lengths, the end of this song, or off.
+    @objc
+    private func sleepTapped() {
+        Feedback.tap()
+        let theme = ThemeManager.shared
+        let sheet = OPTrackSheet(title: "Sleep timer", subtitle: OPSleepTimer.statusText())
+        sheet.cardColor = theme.surface
+        sheet.textColor = theme.primaryText
+        sheet.secondaryTextColor = theme.secondaryText
+        sheet.accentColor = theme.accent
+        sheet.fillColor = theme.separator
+        var actions = OPSleepTimer.minuteChoices.map { minutes in
+            OPSheetAction(title: "\(minutes.intValue) minutes", symbol: "timer", destructive: false) {
+                OPSleepTimer.start(withMinutes: minutes.intValue)
+            }
+        }
+        let endOfSong = OPSheetAction(title: "End of this song", symbol: "music.note", destructive: false) {
+            OPSleepTimer.startForEndOfSong()
+        }
+        endOfSong.checked = OPSleepTimer.endOfSong
+        actions.append(endOfSong)
+        if OPSleepTimer.isArmed {
+            actions.append(OPSheetAction(title: "Turn off", symbol: "moon", destructive: true) {
+                OPSleepTimer.cancel()
+            })
+        }
+        sheet.actions = actions
+        sheet.present(from: self)
     }
 
     @objc

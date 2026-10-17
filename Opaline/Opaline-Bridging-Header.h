@@ -4,6 +4,7 @@
 #import "Features/Music/OPLyricsViewController.h"
 #import "Core/Common/OPActionToast.h"
 #import "Core/Music/OPMusicSettings.h"
+#import "Core/Music/OPSleepTimer.h"
 #import "Features/Music/OPMusicSettingsViewController.h"
 #import "Features/Music/OPTrackSheet.h"
 #import "Core/Music/OPMusicWebAccount.h"
