@@ -46,6 +46,7 @@ final class VideoRouter {
         if MusicPlayer.shared.isActive {
             MusicPlayer.shared.stop()
             AudioOnlyMode.isEnabled = false
+            AudioOnlyMode.soundOnly = false
         }
         if let panel {
             panel.watchVC.loadVideo(video)

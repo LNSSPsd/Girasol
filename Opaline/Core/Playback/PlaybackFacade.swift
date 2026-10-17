@@ -61,6 +61,9 @@ final class PlaybackFacade {
     /// Off for a resolve made ahead of time (music mode's next track):
     /// watch time is reported once the track actually plays.
     var tracksWatchtime = true
+    /// Off for music mode: songs have no dubs and it has no track menu, so
+    /// the dub probe (a second `/player` per video) is skipped.
+    var listsDubs = true
 }
 
 // MARK: - Public API
@@ -123,6 +126,10 @@ extension PlaybackFacade {
         }
         let chain = FallbackChainSource(steps: steps, apiClient: apiClient)
         activeChain = chain
+        guard listsDubs else {
+            activeVideoSource = chain
+            return chain
+        }
         let source = AutoDubSource(wrapping: chain) { [weak chain] in
             chain?.dubCapableSource()
         }

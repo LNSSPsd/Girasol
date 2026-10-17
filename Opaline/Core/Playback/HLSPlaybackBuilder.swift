@@ -39,11 +39,14 @@ enum HLSPlaybackBuilder {
                 completion(nil)
                 return
             }
-            fetchSidxPair(input: input) { videoData, audioData in
+            // Read once: the flag may change while the requests run.
+            let soundOnly = AudioOnlyMode.soundOnly
+            fetchSidxPair(input: input, soundOnly: soundOnly) { videoData, audioData in
                 let result = processSidxData(
                     input: input,
                     videoData: videoData,
                     audioData: audioData,
+                    soundOnly: soundOnly,
                     startTime: startTime
                 )
                 completion(result)
@@ -57,19 +60,22 @@ enum HLSPlaybackBuilder {
 private extension HLSPlaybackBuilder {
     static func fetchSidxPair(
         input: BuildInput,
+        soundOnly: Bool,
         completion: @escaping (Data?, Data?) -> Void
     ) {
         let group = DispatchGroup()
         var videoData: Data?
         var audioData: Data?
-        group.enter()
-        fetchSidxData(
-            url: input.videoURL,
-            format: input.videoFormat,
-            headers: input.headers
-        ) { data in
-            videoData = data
-            group.leave()
+        if !soundOnly {
+            group.enter()
+            fetchSidxData(
+                url: input.videoURL,
+                format: input.videoFormat,
+                headers: input.headers
+            ) { data in
+                videoData = data
+                group.leave()
+            }
         }
         group.enter()
         fetchSidxData(
@@ -105,18 +111,25 @@ private extension HLSPlaybackBuilder {
         input: BuildInput,
         videoData: Data?,
         audioData: Data?,
+        soundOnly: Bool,
         startTime: CFTimeInterval
     ) -> Result? {
-        guard let vData = videoData,
-              let aData = audioData else {
+        guard let aData = audioData, soundOnly || videoData != nil else {
             AppLog.hls("failed to fetch sidx data")
             return nil
         }
-        guard let parsed = parseSidxPair(
-            videoData: vData,
-            audioData: aData
-        ) else {
-            return nil
+        let parsed: (video: [SidxSegment], audio: [SidxSegment])
+        if let vData = videoData {
+            guard let pair = parseSidxPair(videoData: vData, audioData: aData) else {
+                return nil
+            }
+            parsed = pair
+        } else {
+            guard let audio = HLSGenerator.parseSidx(data: aData) else {
+                AppLog.hls("failed to parse audio sidx")
+                return nil
+            }
+            parsed = ([], audio)
         }
         logSidxParsed(
             parsed.video,

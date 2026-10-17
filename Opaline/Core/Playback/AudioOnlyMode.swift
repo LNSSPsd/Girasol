@@ -21,6 +21,12 @@ enum AudioOnlyMode {
     /// and stopped showing video".
     static var isEnabled = false
 
+    /// Music mode's builds: nothing will ever switch them to video (unlike
+    /// video mode's audio-only tier), so they skip the video stream's index
+    /// and register no video playlist. Set with `isEnabled` by the music
+    /// player, cleared when it stops.
+    static var soundOnly = false
+
     /// Both entries are always registered by the builder; pointing the player
     /// at the audio-only one leaves the video playlist unrequested, so not a
     /// single video segment is fetched.

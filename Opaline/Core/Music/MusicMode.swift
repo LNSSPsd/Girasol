@@ -22,6 +22,7 @@ enum MusicMode {
             VideoRouter.shared.minimize()
         } else if !MusicPlayer.shared.isActive {
             AudioOnlyMode.isEnabled = false
+            AudioOnlyMode.soundOnly = false
         }
         UserDefaults.standard.set(enabled, forKey: key)
         (UIApplication.shared.delegate as? AppDelegate)?.showMain()

@@ -216,6 +216,7 @@ final class MusicPlayer: NSObject {
     private func configureFacade() {
         facade.context = self
         facade.tracksWatchtime = false
+        facade.listsDubs = false
     }
 
     /// Plays reported with the web account (YouTube Music's history); with
@@ -630,6 +631,7 @@ final class MusicPlayer: NSObject {
     }
 
     func stop() {
+        AudioOnlyMode.soundOnly = false
         reporter.stop()
         token.cancel()
         facade.reset()
@@ -841,6 +843,7 @@ final class MusicPlayer: NSObject {
         VideoRouter.shared.clearCurrentWatch()
         // Sources build the audio-only entry playlist while this is set.
         AudioOnlyMode.isEnabled = true
+        AudioOnlyMode.soundOnly = true
         AppLog.player("music: loading \(track.id), \(queue.count) queued, \(upcoming.count) upcoming")
         topUpRadioIfNeeded()
         facade.start(
@@ -1118,6 +1121,7 @@ private final class Prefetcher: PlaybackContext {
         let facade = PlaybackFacade()
         facade.context = self
         facade.tracksWatchtime = false
+        facade.listsDubs = false
         let token = CancellationToken()
         pending = (track, facade, token)
         AppLog.player("music: preloading next \(track.id)")
