@@ -217,7 +217,7 @@ final class MusicLibraryViewController: MusicListViewController {
         switch Section(rawValue: section) {
         case .downloads:
             // Works offline: both come from the device.
-            return [MusicDownloads.allSongs] + MusicDownloads.collections()
+            return [MusicDownloads.allSongs, MusicDownloads.storage] + MusicDownloads.collections()
         case .albums:
             return albums
         default:
@@ -294,6 +294,10 @@ final class MusicLibraryViewController: MusicListViewController {
             return
         }
         let picked = collections(in: indexPath.section)[indexPath.row]
+        guard picked.id != MusicDownloads.storageId else {
+            navigationController?.pushViewController(MusicStorageViewController(), animated: true)
+            return
+        }
         guard picked.id != Self.newPlaylist.id else {
             MusicPlaylistEditViewController.present(playlist: nil, tracks: [], from: self) { _ in }
             return

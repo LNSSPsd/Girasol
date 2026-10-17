@@ -75,6 +75,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        MusicDownloads.syncPlaylists()
         // Auto theme can go stale in the background (schedule boundary or a
         // system appearance change while suspended).
         ThemeManager.shared.refreshAutoTheme()

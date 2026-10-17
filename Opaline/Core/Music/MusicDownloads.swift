@@ -1,4 +1,4 @@
-import Foundation
+import AVFoundation
 
 /// Saving music for offline: audio-only downloads through the app's
 /// downloader (a downloaded track then plays from the file — the playback
@@ -160,6 +160,139 @@ enum MusicDownloads {
     /// The track list saved with a downloaded collection, for offline.
     static func savedTracks(of collectionId: String) -> [Video]? {
         savedCollections().first { $0.id == collectionId }?.tracks
+    }
+
+    // MARK: - Keeping playlists downloaded
+
+    private static let syncedKey = "musicDownloads_playlistsSyncedAt"
+
+    /// Albums do not change; playlists do. The app's own lists are not
+    /// YouTube's.
+    private static func isPlaylist(_ id: String) -> Bool {
+        !id.hasPrefix("OLAK5uy") && !id.hasPrefix("MPREb") && !id.hasPrefix("opaline.")
+    }
+
+    /// Downloaded playlists keep up: songs added since are downloaded too.
+    /// On Wi-Fi only, at most every few hours. Songs taken out of a playlist
+    /// leave its offline list but keep their files (still under Downloaded
+    /// songs): a download is never deleted behind the user's back.
+    static func syncPlaylists() {
+        guard !NetworkType.isOffline, !NetworkType.isCellular else {
+            return
+        }
+        let now = Date().timeIntervalSince1970
+        guard now - UserDefaults.standard.double(forKey: syncedKey) > 6 * 3_600 else {
+            return
+        }
+        let playlists = savedCollections().filter { isPlaylist($0.id) }
+        guard !playlists.isEmpty else {
+            return
+        }
+        UserDefaults.standard.set(now, forKey: syncedKey)
+        AppLog.downloads("music: checking \(playlists.count) downloaded playlists for new songs")
+        sync(playlists[...])
+    }
+
+    /// One playlist at a time.
+    private static func sync(_ playlists: ArraySlice<SavedCollection>) {
+        guard let saved = playlists.first else {
+            return
+        }
+        fetchAllTracks(of: saved.id) { tracks in
+            if let tracks, !tracks.isEmpty {
+                let known = Set(saved.tracks.map(\.id))
+                let added = tracks.filter { !known.contains($0.id) }
+                AppLog.downloads(
+                    "music: \(saved.title): \(added.count) new, \(tracks.count) in all (was \(saved.tracks.count))"
+                )
+                if tracks.map(\.id) != saved.tracks.map(\.id) {
+                    replaceTracks(of: saved.id, with: tracks)
+                }
+                download(added)
+            }
+            sync(playlists.dropFirst())
+        }
+    }
+
+    /// The whole playlist: YouTube Music's page with the web account, else
+    /// the TV client's pages. Nil when it cannot be read.
+    private static func fetchAllTracks(of playlistId: String, completion: @escaping ([Video]?) -> Void) {
+        YTMusicPublic.playlist(playlistId) { result in
+            if let result {
+                completion(result.tracks)
+                return
+            }
+            var all: [Video] = []
+            func fetch(_ continuation: String?) {
+                ServiceContainer.playlists.fetchPlaylistVideos(playlistId: playlistId, continuation: continuation) { result in
+                    DispatchQueue.main.async {
+                        guard case .success(let page) = result else {
+                            completion(all.isEmpty ? nil : all)
+                            return
+                        }
+                        all += page.videos
+                        if let next = page.continuation {
+                            fetch(next)
+                        } else {
+                            completion(all)
+                        }
+                    }
+                }
+            }
+            fetch(nil)
+        }
+    }
+
+    private static func replaceTracks(of id: String, with tracks: [Video]) {
+        let saved = savedCollections().map { collection -> SavedCollection in
+            guard collection.id == id else {
+                return collection
+            }
+            return SavedCollection(
+                id: collection.id, title: collection.title, subtitle: collection.subtitle,
+                thumbnailURL: collection.thumbnailURL, tracks: tracks
+            )
+        }
+        if let data = try? JSONEncoder().encode(saved) {
+            UserDefaults.standard.set(data, forKey: collectionsKey)
+        }
+    }
+
+    // MARK: - Storage
+
+    /// Bytes a saved track takes (its folder: audio, artwork, metadata),
+    /// counting its song version's when that is what was saved.
+    static func size(of videoId: String) -> Int64 {
+        let ids = [videoId] + (MusicSongVersions.songId(of: videoId).map { [$0] } ?? [])
+        return ids.filter(DownloadStore.isDownloaded).reduce(0) { $0 + folderSize(DownloadStore.folder(for: $1)) }
+    }
+
+    /// Saved by music mode (sound only), not a video download kept in the
+    /// same store. Reads the file: call off the main thread.
+    static func isAudioOnly(_ videoId: String) -> Bool {
+        DownloadStore.isDownloaded(videoId)
+            && AVURLAsset(url: DownloadStore.videoFile(for: videoId)).tracks(withMediaType: .video).isEmpty
+    }
+
+    private static func folderSize(_ folder: URL) -> Int64 {
+        let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.fileSizeKey])
+        var total: Int64 = 0
+        while let file = files?.nextObject() as? URL {
+            total += Int64((try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+        return total
+    }
+
+    /// A downloaded collection's saved tracks.
+    static func tracks(ofCollection id: String) -> [Video] {
+        savedCollections().first { $0.id == id }?.tracks ?? []
+    }
+
+    /// The Library row that opens `MusicStorageViewController`.
+    static let storageId = "opaline.storage"
+
+    static var storage: Playlist {
+        Playlist(id: storageId, title: "Storage", description: "What downloads take", thumbnailURL: nil, itemCount: nil)
     }
 
     /// Pseudo-collection listing every downloaded track.
