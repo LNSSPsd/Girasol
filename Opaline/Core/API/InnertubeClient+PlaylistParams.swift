@@ -71,6 +71,15 @@ extension InnertubeClient {
         }
     }
 
+    /// Own playlists (`PL`), Liked videos (`LL`), and what can be saved
+    /// from others: albums (`OLAK5uy_`), YouTube Music playlists (`RDCLAK`),
+    /// legacy Favorites (`FL`) — any id-shaped value of field 70.
+    static func isPlaylistId(_ id: String) -> Bool {
+        id.count >= 2 && id.allSatisfy {
+            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-")
+        }
+    }
+
     static func decodeLengthDelimited(
         bytes: [UInt8],
         offset: inout Int,
@@ -79,15 +88,16 @@ extension InnertubeClient {
         guard offset < bytes.count else {
             return nil
         }
-        let len = Int(bytes[offset])
-        offset += 1
-        guard offset + len <= bytes.count else {
+        // A varint like every other protobuf length: ids fit in one byte,
+        // but a nested message past 127 bytes would derail the walk.
+        let len = Int(decodeVarint(bytes: bytes, offset: &offset))
+        guard len >= 0, offset + len <= bytes.count else {
             return nil
         }
         let slice = bytes[offset..<offset + len]
         if fieldNum == 70,
            let id = String(bytes: slice, encoding: .utf8),
-           id.hasPrefix("PL") || id == "LL" {
+           isPlaylistId(id) {
             return id
         }
         offset += len

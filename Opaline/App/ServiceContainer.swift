@@ -37,6 +37,7 @@ enum ServiceContainer {
     static var history: HistoryService { client }
     static var search: SearchService { client }
     static var playlists: PlaylistService { client }
+    static var music: InnertubeClient { client }
     static var channel: ChannelService { client }
     static var channelTabs: ChannelTabService { client }
     static var subscribedChannels: SubscribedChannelsService { client }
@@ -47,7 +48,6 @@ enum ServiceContainer {
     private static let offlineWatch = OfflineWatchService(wrapping: client)
     static var engagement: EngagementService { client }
     static var account: AccountService { client }
-    static var shorts: ShortsService { client }
 
     /// Legacy accessor — prefer narrow protocols above for new code.
     static var video: VideoService { client }

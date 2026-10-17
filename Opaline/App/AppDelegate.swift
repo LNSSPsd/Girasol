@@ -10,6 +10,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private let dependencies = AppDependencies.live()
     /// Built during the splash, handed over by `showMain`.
     private var preloadedMain: UIViewController?
+    /// Video mode's root while music mode is up and its video still plays:
+    /// the watch screen lives in it, and coming back finds it as it was.
+    private var parkedVideoRoot: UIViewController?
     /// A `ytlite://` or youtube.com link that arrived while the splash or
     /// auth screen was still up — replayed once `showMain` puts the tab
     /// bar on screen. See `AppDelegate+DeepLink.swift`.
@@ -20,6 +23,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         AppLog.banner()
+        OPMusicWebAccount.logger = { AppLog.innertube($0) }
         configureServices(application)
         // The player has to know how the phone is held the moment it opens —
         // too late to start asking then.
@@ -74,7 +78,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Auto theme can go stale in the background (schedule boundary or a
         // system appearance change while suspended).
         ThemeManager.shared.refreshAutoTheme()
-        UpdateNotificationService.shared.checkIfNeeded()
         resolveDeferredAuthIfNeeded()
     }
 
@@ -111,7 +114,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         BackgroundPlaybackService.apply()
         application.beginReceivingRemoteControlEvents()
         configureLegacyBackgroundFetch(application)
-        UNUserNotificationCenter.current().delegate = self
         if ReturnYouTubeDislikeService.enabled {
             ReturnYouTubeDislikeService.shared.prepareIfNeeded()
         }
@@ -129,9 +131,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             self, name: .homeFeedDidSettle, object: nil
         )
         BackgroundRefreshService.shared.warmSecondaryCaches()
-        // The same idle moment suits the TV n-solver: waiting for it here costs
-        // nobody anything, waiting for it at playback costs the first video.
-        TVSolverWarmup.warmIfNeeded()
     }
 
     private func makeSplashViewController() -> SplashViewController {
@@ -167,10 +166,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         VideoRouter.shared.watchViewControllerFactory = { [dependencies] video in
             dependencies.makeWatchViewController(video: video)
         }
-        let deps = dependencies
-        VideoRouter.shared.shortsViewControllerFactory = { video, entry in
-            deps.makeShortsViewController(seedVideo: video, entry: entry)
-        }
     }
 
     func startMainThreadWatchdog() {
@@ -182,6 +177,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func showMain() {
+        if MusicMode.isEnabled, VideoRouter.shared.hasPlayer,
+           let root = window?.rootViewController as? RootContainerViewController {
+            parkedVideoRoot = root
+        }
         preloadMainIfNeeded()
         window?.rootViewController = preloadedMain
             ?? makeMain(dependencies: dependencies)
@@ -209,7 +208,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func makeMain(dependencies: AppDependencies) -> UIViewController {
-        RootContainerViewController(
+        if MusicMode.isEnabled {
+            return MusicTabBarController()
+        }
+        defer { parkedVideoRoot = nil }
+        if let parkedVideoRoot, VideoRouter.shared.hasPlayer {
+            return parkedVideoRoot
+        }
+        return RootContainerViewController(
             mainTabBar: MainTabBarController(dependencies: dependencies)
         )
     }

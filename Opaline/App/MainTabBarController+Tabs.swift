@@ -4,14 +4,7 @@ import UIKit
 
 extension MainTabBarController {
     func buildTabs() -> [UIViewController] {
-        var tabs = [makeHomeTab(), makeSubscriptionsTab()]
-        // Only for users who want shorts at all — the same setting that
-        // hides them from every feed.
-        if wantsShortsTab {
-            tabs.append(makeShortsTab())
-        }
-        tabs.append(makeLibraryTab())
-        return tabs
+        [makeHomeTab(), makeSubscriptionsTab(), makeLibraryTab()]
     }
 
     func makeHomeTab() -> UIViewController {

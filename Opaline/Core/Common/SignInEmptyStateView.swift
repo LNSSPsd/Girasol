@@ -10,7 +10,8 @@ final class SignInEmptyStateView: UIView {
         iv.tintColor = .lightGray
         iv.translatesAutoresizingMaskIntoConstraints = false
         if let asset = UIImage(named: "icon_person_fill") {
-            iv.image = asset  // template rendering set in asset catalog
+            // Template in the asset catalog; the Linux build ships loose PNGs.
+            iv.image = asset.withRenderingMode(.alwaysTemplate)
         } else if #available(iOS 13, *) {
             iv.image = UIImage(systemName: "person.circle")
         }

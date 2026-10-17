@@ -26,10 +26,14 @@ extension VideoDownloader {
     func fetchTracks(videoId: String, option: DownloadOption) {
         let videoPart = videoPartFile(videoId)
         let audioPart = audioPartFile(videoId)
+        guard let videoFormat = option.video else {
+            fetchAudio(videoId: videoId, option: option, parts: (videoPart, audioPart))
+            return
+        }
         download(
-            from: option.video.url,
+            from: videoFormat.url,
             to: videoPart,
-            size: option.video.contentLength
+            size: videoFormat.contentLength
         ) { [weak self] error in
             if let error {
                 self?.fail(videoId: videoId, error: error)

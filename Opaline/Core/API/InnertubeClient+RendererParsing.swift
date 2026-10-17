@@ -60,6 +60,7 @@ extension InnertubeClient {
         ) else {
             return nil
         }
+        MusicVideoTypes.record(videoId: videoId, in: tile)
         let meta = tile.digDict(
             "metadata",
             RendererKey.tileMetadata

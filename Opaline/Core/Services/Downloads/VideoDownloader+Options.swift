@@ -41,7 +41,7 @@ extension VideoDownloader {
     /// judges it. A saved copy holds one audio track, so it has to be the one
     /// this person would have heard: downloading the original of an English
     /// video that plays back in Russian gives them a file they cannot watch.
-    private static func audioFormat(
+    static func audioFormat(
         in info: DirectPlaybackInfo
     ) -> DashFormatInfo? {
         let mp4 = info.allDashAudioFormats.filter {

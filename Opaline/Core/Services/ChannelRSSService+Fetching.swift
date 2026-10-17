@@ -6,8 +6,8 @@ import Foundation
 // requests, and the per-variant feed URLs.
 
 extension ChannelRSSService {
-    /// Keyed per variant so toggling the Shorts setting never serves
-    /// entries fetched for another feed.
+    /// Keyed per variant so one feed's entries are never served for the
+    /// other.
     func cacheKey(_ channelId: String, variant: RSSFeedVariant) -> String {
         let prefix: String
         switch variant {
@@ -15,8 +15,6 @@ extension ChannelRSSService {
             prefix = "all|"
         case .longForm:
             prefix = "lf|"
-        case .shorts:
-            prefix = "sh|"
         }
         return prefix + channelId
     }
@@ -106,8 +104,7 @@ extension ChannelRSSService {
     }
 
     /// System-playlist feed per variant, with the full channel feed as the
-    /// fallback for channels where that playlist 404s — except for Shorts,
-    /// where falling back would serve the whole channel as shorts.
+    /// fallback for channels where that playlist 404s.
     /// Calls back on `queue`; nil when nothing usable comes back.
     func fetchChannel(
         _ channelId: String,
@@ -120,13 +117,6 @@ extension ChannelRSSService {
         switch variant {
         case .all:
             fetchFeed(url: fullFeedURL, completion: completion)
-        case .shorts:
-            fetchFeed(
-                url: AppURLs.YouTube.channelShortsRSSFeedURL(
-                    channelId: channelId
-                ),
-                completion: completion
-            )
         case .longForm:
             guard let longFormURL = AppURLs.YouTube.channelLongFormRSSFeedURL(
                 channelId: channelId

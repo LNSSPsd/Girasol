@@ -14,6 +14,7 @@ extension WatchViewController {
         backgroundEnteredAt = Date()
         // Layer/PiP background handling lives in VideoPlayerView.
         guard !bgEnabled else {
+            enterBackgroundAudioOnlyIfNeeded()
             return
         }
         // Auto-PiP may still be starting — pausing now would kill it, so the
@@ -33,6 +34,7 @@ extension WatchViewController {
             Date().timeIntervalSince($0)
         } ?? 0
         backgroundEnteredAt = nil
+        leaveBackgroundAudioOnlyIfNeeded()
         if elapsed > 120, hasSeenPlaybackError {
             AppLog.player(
                 "foreground: URLs likely expired"

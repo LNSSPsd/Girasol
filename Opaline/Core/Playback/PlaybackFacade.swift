@@ -24,12 +24,6 @@ enum PlaybackBufferPolicy {
     ) {
         player.automaticallyWaitsToMinimizeStalling =
             waitsToMinimizeStalling
-        // Keeps audio going in the background without detaching the player
-        // from its layer — the detach is what breaks PiP (#28). Older iOS
-        // has no such policy and falls back to detaching.
-        if #available(iOS 15.0, *) {
-            player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
-        }
     }
 }
 
@@ -64,6 +58,9 @@ final class PlaybackFacade {
     /// Visitor identities burned on the current video because googlevideo
     /// throttled them.
     var identityRedraws = 0
+    /// Off for a resolve made ahead of time (music mode's next track):
+    /// watch time is reported once the track actually plays.
+    var tracksWatchtime = true
 }
 
 // MARK: - Public API
@@ -213,7 +210,9 @@ extension PlaybackFacade {
             let count = activeVideoSource?.availableQualities.count ?? 0
             AppLog.player("source \(name) playing, \(count) qualities")
             context?.attachPrepared(prepared, resumeAt: nil)
-            fetchWatchtimeAndTrack()
+            if tracksWatchtime {
+                fetchWatchtimeAndTrack()
+            }
         case .failure(let error):
             AppLog.player("source playback failed: \(error)")
             guard !PlaybackChainSettings.activeSteps().isEmpty else {

@@ -8,10 +8,6 @@ extension UIViewController {
     /// player panel, lifting a fullscreen orientation lock — has to say so, or
     /// the interface stays stuck at whatever the mask used to allow.
     func refreshSupportedOrientations() {
-        if #available(iOS 16.0, *) {
-            setNeedsUpdateOfSupportedInterfaceOrientations()
-        } else {
-            UIViewController.attemptRotationToDeviceOrientation()
-        }
+        UIViewController.attemptRotationToDeviceOrientation()
     }
 }

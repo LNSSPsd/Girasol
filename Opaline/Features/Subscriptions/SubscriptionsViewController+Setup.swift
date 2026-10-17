@@ -56,10 +56,6 @@ extension SubscriptionsViewController {
             forCellReuseIdentifier:
                 SubscriptionVideoCell.reuseId
         )
-        tableView.register(
-            ShortsShelfCell.self,
-            forCellReuseIdentifier: ShortsShelfCell.reuseId
-        )
         tableView.dataSource = self
         tableView.delegate = self
         // Heights come from `heightForRowAt`; the estimate keeps the table
@@ -143,7 +139,6 @@ extension SubscriptionsViewController {
         seenVideoIds = []
         sortDatesByVideoId = [:]
         videos = []
-        shortsShelf = []
         appendPage(page)
         refreshNewContentDots()
     }
@@ -152,16 +147,9 @@ extension SubscriptionsViewController {
         let fresh = page.videos.filter {
             seenVideoIds.insert($0.id).inserted
         }
-        // With grouping on the shorts are split off into their own shelf so
-        // every consumer below — row heights, taps — sees a list without
-        // them; off, they stay in the list as ordinary videos.
-        let grouping = ShortsGrouping.isEnabled
-        if grouping {
-            shortsShelf.append(contentsOf: fresh.filter { $0.isShort })
-        }
-        let newVideos = grouping ? fresh.filter { !$0.isShort } : fresh
-        if !newVideos.isEmpty {
-            videos.append(contentsOf: newVideos)
+        // Shorts stay in the list as ordinary videos.
+        if !fresh.isEmpty {
+            videos.append(contentsOf: fresh)
         }
         continuationToken = page.continuation
         isLoadingMore = false

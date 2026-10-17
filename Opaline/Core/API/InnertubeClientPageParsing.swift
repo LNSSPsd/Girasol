@@ -53,9 +53,7 @@ extension InnertubeClient {
     ) -> FeedPage {
         let sections = slr["contents"]
             as? [[String: Any]] ?? []
-        let showShorts = UserDefaults.standard.bool(
-            forKey: UserDefaultsKeys.Feed.showShorts
-        )
+        let showShorts = ShortsFilter.keeps
         var acc = ShelfAccumulator()
         for section in sections {
             appendSection(

@@ -33,7 +33,7 @@ extension InnertubeClient {
             headers: anonHeaders(),
             logTag: "channelTabNext"
         ) { json -> FeedPage? in
-            Self.parseChannelTabNextPage(json)
+            ShortsFilter.keeping { Self.parseChannelTabNextPage(json) }
         } completion: { completion($0) }
     }
 
@@ -90,7 +90,7 @@ private extension InnertubeClient {
             headers: anonHeaders(),
             logTag: "channelTab(\(channelId))"
         ) { json -> ChannelTabPage? in
-            Self.parseChannelTabPage(json)
+            ShortsFilter.keeping { Self.parseChannelTabPage(json) }
         } completion: { [weak self] result in
             self?.logChannelTabResult(result, label: channelId)
             completion(result)

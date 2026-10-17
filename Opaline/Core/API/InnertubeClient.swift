@@ -375,7 +375,7 @@ extension InnertubeClient {
 
 // MARK: - Private Helpers
 
-private extension InnertubeClient {
+extension InnertubeClient {
     func withValidToken<T>(
         completion: @escaping (Result<T, Error>) -> Void,
         perform: @escaping (InnertubeClient, String) -> Void

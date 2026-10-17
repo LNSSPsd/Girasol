@@ -31,6 +31,15 @@ final class TopBarAutoHider {
         defer {
             lastOffsetY = y
         }
+        // Layout moves the offset of a screen being covered or uncovered (a
+        // push or swipe-back changes its insets) — not the user scrolling.
+        // Toggling the shared bar mid-transition leaves it in the wrong state
+        // and can wedge the navigation controller, freezing the UI.
+        guard let owner, isOnTop(owner),
+              owner.visibleNavigationController?.transitionCoordinator == nil
+        else {
+            return
+        }
         let fromTop = y + scrollView.adjustedContentInset.top
         // The delta conditions keep the top/bottom rubber-band
         // bounce-backs from toggling the bar.
@@ -41,6 +50,20 @@ final class TopBarAutoHider {
         } else if delta < -4, y < bottomOffsetY(scrollView) {
             setHidden(false)
         }
+    }
+
+    /// The owner is the screen in front: the top of every navigation
+    /// controller between it and the window.
+    private func isOnTop(_ viewController: UIViewController) -> Bool {
+        var child = viewController
+        while let parent = child.parent {
+            if let nav = parent as? UINavigationController,
+               nav.topViewController !== child {
+                return false
+            }
+            child = parent
+        }
+        return viewController.viewIfLoaded?.window != nil
     }
 
     func showBars() {
@@ -68,6 +91,11 @@ final class TopBarAutoHider {
             return
         }
         isHidden = hidden
+        let nav = owner?.visibleNavigationController
+        AppLog.nav(
+            "topBar \(hidden ? "hide" : "show") by \(owner.map { "\(type(of: $0))" } ?? "nil")"
+                + " busy=\(nav?.transitionCoordinator != nil)"
+        )
         owner?.visibleNavigationController?
             .setNavigationBarHidden(hidden, animated: true)
         guard let onChange else {

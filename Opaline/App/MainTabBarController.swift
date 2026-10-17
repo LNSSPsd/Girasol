@@ -9,6 +9,10 @@ class MainTabBarController: UITabBarController {
     private weak var playerPanel: PlayerPanelViewController?
     private var miniPlayerBar: MiniPlayerBar?
     private var miniPlayerBarBottomConstraint: NSLayoutConstraint?
+    /// The song left playing from music mode, until a video opens (which
+    /// stops it). Tapping it goes back to music mode's player.
+    private let musicBar = MusicNowPlayingBar()
+    private var musicBarBottom: NSLayoutConstraint?
 
     // The player panel is parented to `RootContainerViewController`, which
     // forwards these to it directly — see the note there.
@@ -60,8 +64,7 @@ class MainTabBarController: UITabBarController {
         super.viewDidLoad()
         delegate = self
         viewControllers = buildTabs()
-        // Falls back to the first tab when the preferred one is not built
-        // (Shorts picked, then hidden).
+        // Falls back to the first tab when the preferred one is not built.
         if let index = viewControllers?.firstIndex(where: {
             $0.tabBarItem.tag == DefaultTab.selected.tabTag
         }) {
@@ -73,18 +76,48 @@ class MainTabBarController: UITabBarController {
             name: ThemeManager.didChangeNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleShowShortsTabChange),
-            name: .showShortsSettingDidChange,
-            object: nil
-        )
+        installMusicBar()
         applyTheme()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateMiniPlayerBarBottomInset()
+        musicBarBottom?.constant = -(view.bounds.maxY - view.convert(tabBar.bounds, from: tabBar).minY)
+    }
+
+    private func installMusicBar() {
+        musicBar.translatesAutoresizingMaskIntoConstraints = false
+        musicBar.onOpen = {
+            MusicTabBarController.opensPlayer = true
+            MusicMode.setEnabled(true)
+        }
+        view.insertSubview(musicBar, belowSubview: tabBar)
+        let bottom = musicBar.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        NSLayoutConstraint.activate([
+            musicBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            musicBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            musicBar.heightAnchor.constraint(equalToConstant: MusicNowPlayingBar.height),
+            bottom
+        ])
+        musicBarBottom = bottom
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(musicPlayerDidChange),
+            name: MusicPlayer.didChangeNotification,
+            object: nil
+        )
+        musicPlayerDidChange()
+    }
+
+    @objc
+    private func musicPlayerDidChange() {
+        let visible = MusicPlayer.shared.isActive
+        musicBar.isHidden = !visible
+        // Keeps the last rows of every tab clear of the bar.
+        for child in viewControllers ?? [] {
+            child.additionalSafeAreaInsets.bottom = visible ? MusicNowPlayingBar.height : 0
+        }
     }
 
     override func traitCollectionDidChange(
@@ -120,14 +153,8 @@ class MainTabBarController: UITabBarController {
         let theme = ThemeManager.shared
         tabBar.barStyle = theme.barStyle
         tabBar.tintColor = theme.isDark ? .white : theme.accent
-        if #available(iOS 15.0, *) {
-            let appearance = UITabBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = theme.surface
-            tabBar.standardAppearance = appearance
-            tabBar.scrollEdgeAppearance = appearance
-        }
         miniPlayerBar?.applyTheme()
+        musicBar.refresh()
     }
 
     // The tab bar is not always a subview of ours (iPadOS gives it its own

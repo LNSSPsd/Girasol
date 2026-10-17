@@ -91,6 +91,8 @@ final class WatchViewController: UIViewController {
     var preparedDuration: Double?, itemStartsAt: Double?
     var captionTracks: [SubtitleTrack] = [], activeSubtitleLanguage: String?
     var backgroundEnteredAt: Date?, savedPlayerForBackground: AVPlayer?
+    /// Audio-only was switched on by leaving the app, not by the user.
+    var isBackgroundAudioOnly = false
     var isRecoveringPlayback = false, hasSeenPlaybackError = false
     /// Frozen during a recovery seek: a fresh item's zeroed clock must not
     /// overwrite where the user actually was.

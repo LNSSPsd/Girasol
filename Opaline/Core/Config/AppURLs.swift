@@ -34,17 +34,6 @@ enum AppURLs {
             )
         }
 
-        /// The mirror image: the undocumented `UUSH` system playlist holds
-        /// the channel's Shorts and nothing else. nil for non-`UC` ids.
-        static func channelShortsRSSFeedURL(channelId: String) -> URL? {
-            guard channelId.hasPrefix("UC") else {
-                return nil
-            }
-            let playlistId = "UUSH" + channelId.dropFirst(2)
-            return URL(
-                string: base + "/feeds/videos.xml?playlist_id=" + playlistId
-            )
-        }
     }
 
     enum YouTubeOAuth {
@@ -88,29 +77,15 @@ enum AppURLs {
         static let youtubeV3 = "https://www.googleapis.com/youtube/v3"
     }
 
-    /// Donation page opened from Settings — most users install from the
-    /// repo or a bare IPA and never see the README link.
+    /// The original Opaline author's donation page (Settings → Credits →
+    /// Opaline → Support Development).
     enum Support {
         static let donate = "https://buymeacoffee.com/verback2308"
     }
 
-    /// Release manifest used to detect newer app versions for the
-    /// in-app notification inbox ("app update available").
-    /// The value is a build setting (`APP_MANIFEST_URL` in
-    /// `Config/App.xcconfig` → `AppManifestURL` in Info.plist), so a fork
-    /// points at its own feed without touching code. Empty when the build
-    /// setting is missing — the poller then logs "bad manifest URL".
-    enum AppManifest {
-        static var source: String {
-            Bundle.main.object(forInfoDictionaryKey: "AppManifestURL") as? String ?? ""
-        }
-    }
-
-    /// Where the Settings feedback row sends people. The chooser rather than a
-    /// blank issue, so reports arrive shaped by the templates in
-    /// `.github/ISSUE_TEMPLATE/` instead of as free text.
-    enum Feedback {
-        static let issues = URL(string: "https://github.com/verback2308/Opaline/issues/new/choose")
+    /// Settings → Credits.
+    enum Credits {
+        static let opaline = "https://github.com/verback2308/Opaline"
     }
 
     /// Remote GVS proof-of-origin (`pot`) provider — the `solver-server`'s

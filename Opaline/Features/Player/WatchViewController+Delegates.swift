@@ -138,14 +138,8 @@ extension WatchViewController {
         orientationLock = mask
         orientationLockHeld = nil
         refreshSupportedOrientations()
-        if #available(iOS 16.0, *) {
-            view.window?.windowScene?.requestGeometryUpdate(
-                .iOS(interfaceOrientations: mask)
-            )
-        } else {
-            // KVC on `orientation` is the only pre-iOS 16 way to rotate on demand.
-            UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
-        }
+        // KVC on `orientation` is the only pre-iOS 16 way to rotate on demand.
+        UIDevice.current.setValue(orientation.rawValue, forKey: "orientation")
         // The phone may already be held the way we just rotated to — then no
         // orientation notification is coming and the lock would never lift.
         releaseOrientationLock(ifDeviceIs: device)

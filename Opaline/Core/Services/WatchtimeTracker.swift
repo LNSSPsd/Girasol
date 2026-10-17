@@ -29,6 +29,9 @@ final class WatchtimeTracker {
     /// Provides the item's duration (seconds), for the local
     /// progress fraction. Set alongside `timeProvider`.
     var durationProvider: (() -> TimeInterval)?
+    /// Whose history the pings go to, when not the TV sign-in's: music
+    /// mode reports with the YouTube Music web account.
+    var authHeaders: (() -> [String: String])?
 
     init(transport: HTTPTransport = ServiceContainer.transport) {
         self.transport = transport
@@ -153,6 +156,13 @@ final class WatchtimeTracker {
         let sep = baseURL.contains("?") ? "&" : "?"
         let urlStr = baseURL + sep + extra
         guard let url = URL(string: urlStr) else {
+            return
+        }
+        if let authHeaders {
+            transport.send(HTTPRequest(method: .get, url: url, headers: authHeaders()), cancellationToken: nil) { result in
+                let code = (try? result.get().status) ?? 0
+                AppLog.log("Watchtime", "ping response \(code) (web account)")
+            }
             return
         }
         OAuthClient.shared.validToken { [weak self] result in

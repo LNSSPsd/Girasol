@@ -4,10 +4,12 @@ import Foundation
 struct DownloadOption {
     let label: String
     let height: Int
-    let video: DashFormatInfo
+    /// Nil for an audio-only save (music mode): only the sound is fetched,
+    /// and the "video" file holds just that track.
+    let video: DashFormatInfo?
     let audio: DashFormatInfo
 
-    var bytes: Int64 { video.contentLength + audio.contentLength }
+    var bytes: Int64 { (video?.contentLength ?? 0) + audio.contentLength }
 }
 
 /// Downloads videos for offline watching: the video track and the audio track
@@ -87,6 +89,27 @@ final class VideoDownloader {
         }
     }
 
+    /// The audio track alone, for music: the same track a video download
+    /// would pair with its picture.
+    func audioOnlyOption(
+        for videoId: String,
+        completion: @escaping (Result<DownloadOption, Error>) -> Void
+    ) {
+        apiClient.fetchDirectPlayback(
+            videoId: videoId,
+            client: client,
+            poToken: nil,
+            cancellationToken: nil
+        ) { result in
+            completion(result.flatMap { info in
+                guard let audio = Self.audioFormat(in: info) else {
+                    return .failure(DownloadError.noTracks)
+                }
+                return .success(DownloadOption(label: "Audio", height: 0, video: nil, audio: audio))
+            })
+        }
+    }
+
     // MARK: - Queue
 
     func isQueued(_ videoId: String) -> Bool {
@@ -160,7 +183,7 @@ final class VideoDownloader {
         AppLog.downloads(
             "start \(job.video.id) \(option.label)"
                 + " \(option.bytes / 1_048_576) MB,"
-                + " itags \(option.video.itag)+\(option.audio.itag)"
+                + " itags \(option.video.map { "\($0.itag)" } ?? "none")+\(option.audio.itag)"
         )
         fetchTracks(videoId: job.video.id, option: option)
     }

@@ -33,10 +33,9 @@ final class ChannelTabsView: UIView {
     private var buttons: [UIButton] = []
     private var underlineRefs: [NSLayoutConstraint] = []
     private var selectedIndex = 0
-    /// Visible tabs in display order — Shorts only when the user wants them.
-    private let tabs: [Tab] = UserDefaults.standard.bool(
-        forKey: UserDefaultsKeys.Feed.showShorts
-    ) ? [.videos, .shorts, .live, .playlists] : [.videos, .live, .playlists]
+    /// Visible tabs in display order. A channel's own page keeps its Shorts
+    /// (played in the normal player).
+    private let tabs: [Tab] = [.videos, .shorts, .live, .playlists]
 
     override init(frame: CGRect) {
         super.init(frame: frame)

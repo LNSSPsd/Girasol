@@ -73,7 +73,7 @@ private extension SubscriptionsViewController {
         // Shorts setting says — so always the long-form (`UULF`) feed.
         channelRSSService.fetchRecentUploads(
             channelIds: ids,
-            includeShorts: false
+            includeShorts: true
         ) { [weak self] uploads in
             guard let self else {
                 return

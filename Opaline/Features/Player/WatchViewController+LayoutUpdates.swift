@@ -157,12 +157,13 @@ extension WatchViewController {
             + layout.sectionInset.right
         let spacing = layout.minimumInteritemSpacing
             * (cols - 1)
-        let baseWidth: CGFloat = if let containerSize {
-            isLandscape
+        let baseWidth: CGFloat
+        if let containerSize {
+            baseWidth = isLandscape
                 ? (sidebarWidthConstraint?.constant ?? 0)
                 : containerSize.width
         } else {
-            relatedCollectionView.bounds.width
+            baseWidth = relatedCollectionView.bounds.width
         }
         // The collection view can still be at its pre-transition width — iOS
         // also resizes the app off-screen for the multitasking snapshot — and

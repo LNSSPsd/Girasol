@@ -158,14 +158,6 @@ struct PlaylistsPage {
     var filterChips: [ChannelFilterChip] = []
 }
 
-/// The endless Shorts swipe feed.
-protocol ShortsService: AnyObject {
-    func fetchShortsSequence(
-        seed: String,
-        completion: @escaping (Result<ShortsSequencePage, Error>) -> Void
-    )
-}
-
 protocol WatchService: AnyObject {
     func fetchWatchPage(
         video: Video,

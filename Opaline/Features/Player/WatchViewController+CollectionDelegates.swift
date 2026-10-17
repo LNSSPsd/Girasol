@@ -77,11 +77,9 @@ extension WatchViewController: UICollectionViewDataSource {
                 for: indexPath
             ) as? PlaylistSectionHeaderView
             ?? PlaylistSectionHeaderView()
-        let title: String = if watchPage?.servedOffline ?? false {
-            "player.related.downloaded".localized
-        } else {
-            "player.related.title".localized
-        }
+        let title = watchPage?.servedOffline ?? false
+            ? "player.related.downloaded".localized
+            : "player.related.title".localized
         header.configure(
             title: title,
             color: ThemeManager.shared.primaryText

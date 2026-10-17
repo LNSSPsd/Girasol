@@ -156,11 +156,16 @@ private extension HLSPlaybackBuilder {
         since startTime: CFTimeInterval
     ) {
         let elapsed = CACurrentMediaTime() - startTime
+        // Totals from the segment index: a timeline that does not match the
+        // track's real length puts everything timed against it off.
         let msg = String(
-            format: "sidx parsed in %.1fs — v:%d a:%d",
+            format: "sidx parsed in %.1fs — v:%d (%.2fs) a:%d (%.2fs, first %.2fs)",
             elapsed,
             videoSegs.count,
-            audioSegs.count
+            videoSegs.reduce(0) { $0 + $1.duration },
+            audioSegs.count,
+            audioSegs.reduce(0) { $0 + $1.duration },
+            audioSegs.first?.duration ?? 0
         )
         AppLog.hls(msg)
     }

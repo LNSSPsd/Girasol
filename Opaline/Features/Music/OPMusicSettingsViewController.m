@@ -1,0 +1,250 @@
+#import "OPMusicSettingsViewController.h"
+#import "../../Core/Music/OPMusicSettings.h"
+#import "../../Core/Music/OPMusicWebAccount.h"
+#import "OPMusicWebSignInViewController.h"
+
+typedef NS_ENUM(NSInteger, OPSection) {
+	OPSectionSearch,
+	OPSectionSongs,
+	OPSectionTitles,
+	OPSectionCache,
+	OPSectionAmount,
+	OPSectionAccount,
+	OPSectionAfter,
+	OPSectionApp,
+	OPSectionCount,
+};
+
+@implementation OPMusicSettingsViewController
+
+- (instancetype)init {
+	if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) {
+		_backgroundColor = UIColor.systemGroupedBackgroundColor;
+		_cellColor = UIColor.secondarySystemGroupedBackgroundColor;
+		_textColor = UIColor.labelColor;
+		_secondaryTextColor = UIColor.secondaryLabelColor;
+		_accentColor = UIColor.systemRedColor;
+		self.title = @"Music settings";
+	}
+	return self;
+}
+
+- (void)viewDidLoad {
+	[super viewDidLoad];
+	self.tableView.backgroundColor = self.backgroundColor;
+	self.navigationItem.rightBarButtonItem =
+	    [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone
+	                                                  target:self
+	                                                  action:@selector(done)];
+	[NSNotificationCenter.defaultCenter addObserver:self
+	                                       selector:@selector(accountChanged)
+	                                           name:OPMusicWebAccountDidChangeNotification
+	                                         object:nil];
+}
+
+- (void)accountChanged {
+	NSMutableIndexSet *sections = [NSMutableIndexSet indexSetWithIndex:OPSectionAccount];
+	[sections addIndex:OPSectionAfter];
+	[self.tableView reloadSections:sections withRowAnimation:UITableViewRowAnimationNone];
+}
+
+- (void)done {
+	[self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+	return OPSectionCount;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+	switch (section) {
+	case OPSectionSearch:
+	case OPSectionSongs:
+	case OPSectionTitles:
+	case OPSectionCache:
+		return 1;
+	case OPSectionAmount:
+		return OPMusicSettings.cacheNext ? (NSInteger)OPMusicSettings.cacheChoices.count : 0;
+	default:
+		return 1;
+	}
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+	if (section == OPSectionAmount && OPMusicSettings.cacheNext)
+		return @"How much to buffer ahead";
+	if (section == OPSectionAfter)
+		return @"After an album or playlist";
+	return nil;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+	if (section == OPSectionSearch)
+		return @"Off: results come when you tap Search on the keyboard.";
+	if (section == OPSectionSongs)
+		return @"YouTube Music often lists a song's music video in its place, which can differ from the album "
+		       @"version (a radio edit, an intro). On: the album version plays.";
+	if (section == OPSectionTitles)
+		return @"In English, YouTube Music names Japanese album tracks twice (original and romanized). On: only the "
+		       @"original title. Applies to lists loaded from now on; artist and album names stay as YouTube Music "
+		       @"gives them.";
+	if (section == OPSectionCache)
+		return @"Loads the next song before the current one ends, so a tunnel or a dead zone does not stop the "
+		       @"music.";
+	if (section == OPSectionAmount && OPMusicSettings.cacheNext)
+		return @"Applies to the playing song and the next one. More uses more data up front.";
+	if (section == OPSectionAccount)
+		return OPMusicWebAccount.signedIn
+		           ? @"Home shows your own YouTube Music shelves, and new playlists can be created."
+		           : @"Optional. Everything else works with the app's sign-in alone; this adds your personal "
+		             @"YouTube Music home and creating playlists, which YouTube allows only to a web sign-in.";
+	if (section == OPSectionAfter)
+		return OPMusicWebAccount.signedIn
+		           ? @"On: what YouTube Music itself plays after that album or playlist, for your account. Off: a mix "
+		             @"of the songs you played lately."
+		           : @"Plays a mix of the songs you played lately. YouTube Music's own recommendations need the "
+		             @"YouTube Music sign-in above.";
+	return nil;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+	UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+	cell.backgroundColor = self.cellColor;
+	cell.textLabel.textColor = self.textColor;
+	cell.tintColor = self.accentColor;
+	switch (indexPath.section) {
+	case OPSectionSearch: {
+		cell.textLabel.text = @"Search as you type";
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+		UISwitch *toggle = [UISwitch new];
+		toggle.on = OPMusicSettings.searchAsYouType;
+		toggle.onTintColor = self.accentColor;
+		[toggle addTarget:self action:@selector(searchToggled:) forControlEvents:UIControlEventValueChanged];
+		cell.accessoryView = toggle;
+		break;
+	}
+	case OPSectionSongs: {
+		cell.textLabel.text = @"Songs, not music videos";
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+		UISwitch *toggle = [UISwitch new];
+		toggle.on = OPMusicSettings.songVersions;
+		toggle.onTintColor = self.accentColor;
+		[toggle addTarget:self action:@selector(songsToggled:) forControlEvents:UIControlEventValueChanged];
+		cell.accessoryView = toggle;
+		break;
+	}
+	case OPSectionTitles: {
+		cell.textLabel.text = @"Original Japanese titles";
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+		UISwitch *toggle = [UISwitch new];
+		toggle.on = OPMusicSettings.originalTitles;
+		toggle.onTintColor = self.accentColor;
+		[toggle addTarget:self action:@selector(titlesToggled:) forControlEvents:UIControlEventValueChanged];
+		cell.accessoryView = toggle;
+		break;
+	}
+	case OPSectionCache: {
+		cell.textLabel.text = @"Cache the next song";
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+		UISwitch *toggle = [UISwitch new];
+		toggle.on = OPMusicSettings.cacheNext;
+		toggle.onTintColor = self.accentColor;
+		[toggle addTarget:self action:@selector(cacheToggled:) forControlEvents:UIControlEventValueChanged];
+		cell.accessoryView = toggle;
+		break;
+	}
+	case OPSectionAmount: {
+		NSTimeInterval seconds = OPMusicSettings.cacheChoices[indexPath.row].doubleValue;
+		cell.textLabel.text = [OPMusicSettings titleForCacheSeconds:seconds];
+		cell.accessoryType =
+		    seconds == OPMusicSettings.cacheSeconds ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
+		break;
+	}
+	case OPSectionAfter: {
+		cell.textLabel.text = @"YouTube Music's recommendations";
+		cell.selectionStyle = UITableViewCellSelectionStyleNone;
+		UISwitch *toggle = [UISwitch new];
+		toggle.on = OPMusicSettings.accountRecommendations && OPMusicWebAccount.signedIn;
+		toggle.enabled = OPMusicWebAccount.signedIn;
+		toggle.onTintColor = self.accentColor;
+		[toggle addTarget:self
+		              action:@selector(recommendationsToggled:)
+		    forControlEvents:UIControlEventValueChanged];
+		cell.accessoryView = toggle;
+		if (!OPMusicWebAccount.signedIn)
+			cell.textLabel.textColor = self.secondaryTextColor;
+		break;
+	}
+	case OPSectionAccount:
+		if (OPMusicWebAccount.signedIn) {
+			cell.textLabel.text = @"Sign out of YouTube Music";
+			cell.textLabel.textColor = UIColor.systemRedColor;
+		} else {
+			cell.textLabel.text = @"Sign in to YouTube Music";
+			cell.textLabel.textColor = self.accentColor;
+		}
+		break;
+	default:
+		cell.textLabel.text = @"App settings";
+		cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+		break;
+	}
+	return cell;
+}
+
+- (void)recommendationsToggled:(UISwitch *)toggle {
+	OPMusicSettings.accountRecommendations = toggle.on;
+}
+
+- (void)songsToggled:(UISwitch *)toggle {
+	OPMusicSettings.songVersions = toggle.on;
+}
+
+- (void)titlesToggled:(UISwitch *)toggle {
+	OPMusicSettings.originalTitles = toggle.on;
+}
+
+- (void)searchToggled:(UISwitch *)toggle {
+	OPMusicSettings.searchAsYouType = toggle.on;
+}
+
+- (void)cacheToggled:(UISwitch *)toggle {
+	OPMusicSettings.cacheNext = toggle.on;
+	[self.tableView reloadSections:[NSIndexSet indexSetWithIndex:OPSectionAmount]
+	              withRowAnimation:UITableViewRowAnimationAutomatic];
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+	[tableView deselectRowAtIndexPath:indexPath animated:YES];
+	if (indexPath.section == OPSectionAmount) {
+		OPMusicSettings.cacheSeconds = OPMusicSettings.cacheChoices[indexPath.row].doubleValue;
+		[tableView reloadSections:[NSIndexSet indexSetWithIndex:OPSectionAmount]
+		         withRowAnimation:UITableViewRowAnimationNone];
+	} else if (indexPath.section == OPSectionAccount) {
+		[self accountTapped];
+	} else if (indexPath.section == OPSectionApp && self.onAppSettings) {
+		self.onAppSettings();
+	}
+}
+
+- (void)accountTapped {
+	if (!OPMusicWebAccount.signedIn) {
+		OPMusicWebSignInViewController *signIn = [OPMusicWebSignInViewController new];
+		signIn.backgroundColor = self.backgroundColor;
+		[self.navigationController pushViewController:signIn animated:YES];
+		return;
+	}
+	UIAlertController *alert =
+	    [UIAlertController alertControllerWithTitle:@"Sign out of YouTube Music?"
+	                                        message:@"The app's own sign-in stays; Home goes back to the public shelves."
+	                                 preferredStyle:UIAlertControllerStyleAlert];
+	[alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+	[alert addAction:[UIAlertAction actionWithTitle:@"Sign out"
+	                                          style:UIAlertActionStyleDestructive
+	                                        handler:^(UIAlertAction *action) {
+		                                        [OPMusicWebAccount signOut];
+	                                        }]];
+	[self presentViewController:alert animated:YES completion:nil];
+}
+
+@end

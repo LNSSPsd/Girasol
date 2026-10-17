@@ -56,11 +56,6 @@ enum UserDefaultsKeys {
     }
 
     enum Feed {
-        static let showShorts = "feed_showShorts"
-        /// `ShortsPlayerMode` raw value; absent = vertical viewer.
-        static let shortsPlayer = "feed_shortsPlayer"
-        /// Shorts shelf in the subscriptions feed; absent = grouped.
-        static let groupShorts = "feed_groupShorts"
         static let homeLayout = "feed_homeLayout"
         /// `DefaultTab` raw value (= tab tag); absent = Home.
         static let defaultTab = "feed_defaultTab"
@@ -137,11 +132,4 @@ enum UserDefaultsKeys {
         static let keychainAfterFirstUnlock = "migration_keychainAfterFirstUnlock"
     }
 
-    enum Notifications {
-        static let appUpdatesEnabled = "notifications_appUpdates"
-        static let lastUpdateCheck = "notifications_lastUpdateCheck"
-        /// First launch of a build that has the inbox — nothing published
-        /// before it is worth showing.
-        static let featureInstallDate = "notifications_featureInstallDate"
-    }
 }

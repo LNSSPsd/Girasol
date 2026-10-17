@@ -58,7 +58,17 @@ final class PlaylistVideosViewController: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        AppLog.nav("playlist \(playlist.id) willDisappear")
         topBarHider.showBars()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        AppLog.nav("playlist \(playlist.id) didDisappear")
+    }
+
+    deinit {
+        AppLog.nav("playlist \(playlist.id) deinit")
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {

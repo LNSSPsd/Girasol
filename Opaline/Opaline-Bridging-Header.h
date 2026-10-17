@@ -1,0 +1,10 @@
+// Objective-C parts of Opaline, visible to Swift (see the Makefile).
+#import "Core/Music/OPLyrics.h"
+#import "Features/Music/OPLyricsView.h"
+#import "Features/Music/OPLyricsViewController.h"
+#import "Core/Common/OPActionToast.h"
+#import "Core/Music/OPMusicSettings.h"
+#import "Features/Music/OPMusicSettingsViewController.h"
+#import "Features/Music/OPTrackSheet.h"
+#import "Core/Music/OPMusicWebAccount.h"
+#import "Features/Music/OPMusicWebSignInViewController.h"

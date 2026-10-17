@@ -56,10 +56,10 @@ extension InnertubeClient {
             return
         }
         api.post(url: url, body: tvData, headers: authHeaders(token: token)) { result in
-            guard let page = Self.handleChannelPageTVOnly(
-                result,
-                channelId: channelId
-            ) else {
+            // A channel's own page keeps its shorts.
+            guard let page = ShortsFilter.keeping({
+                Self.handleChannelPageTVOnly(result, channelId: channelId)
+            }) else {
                 completion(.failure(APIError.decodingFailed))
                 return
             }

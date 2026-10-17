@@ -54,11 +54,11 @@ enum SABRError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noInitSegment:
-            "SABR returned no init segment"
+            return "SABR returned no init segment"
         case .stalled:
-            "SABR returned no media"
+            return "SABR returned no media"
         case .server(let detail):
-            "SABR error: \(detail)"
+            return "SABR error: \(detail)"
         }
     }
 }

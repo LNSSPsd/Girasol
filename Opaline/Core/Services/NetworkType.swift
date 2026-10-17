@@ -6,6 +6,22 @@ import SystemConfiguration
 /// the moment a stream is picked, which is the only moment that asks.
 enum NetworkType {
     static var isCellular: Bool {
+        guard let flags else {
+            return false
+        }
+        return flags.contains(.isWWAN) && flags.contains(.reachable)
+    }
+
+    /// No route at all (airplane mode, no Wi-Fi and no cellular). A Wi-Fi
+    /// without internet still counts as online: streams fail there instead.
+    static var isOffline: Bool {
+        guard let flags else {
+            return false
+        }
+        return !flags.contains(.reachable) || flags.contains(.connectionRequired)
+    }
+
+    private static var flags: SCNetworkReachabilityFlags? {
         var address = sockaddr_in()
         address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
         address.sin_family = sa_family_t(AF_INET)
@@ -15,12 +31,12 @@ enum NetworkType {
             }
         }
         guard let reachability else {
-            return false
+            return nil
         }
         var flags = SCNetworkReachabilityFlags()
         guard SCNetworkReachabilityGetFlags(reachability, &flags) else {
-            return false
+            return nil
         }
-        return flags.contains(.isWWAN) && flags.contains(.reachable)
+        return flags
     }
 }

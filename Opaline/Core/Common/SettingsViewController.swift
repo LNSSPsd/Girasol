@@ -5,14 +5,13 @@ import UIKit
 /// every page — `page` picks which sections to build (see +Pages).
 final class SettingsViewController: UIViewController {
     enum Row {
-        case pageAppearance, pageLanguage, pagePlayback, pageShorts
+        case pageAppearance, pageLanguage, pagePlayback, pageCredits, pageCreditsOpaline
         case pageSponsorBlock, pageCache, pageDebug, pageDownloads
         case theme, autoDarkStart, autoDarkEnd, appIcon
         case appLanguage, region
         case quality, qualityCellular
         case backgroundPlayback, pipEnabled, hideStatusBar
         case downloadQuality, downloadComments, downloadCaptions
-        case showShorts, shortsPlayer, shortsGrouping
         case autoZoomToFill
         case autoplayEnabled, autoplayMixEnabled
         case autoDubEnabled, autoDubLanguage, autoDubIgnoreAI
@@ -21,17 +20,16 @@ final class SettingsViewController: UIViewController {
         case imageCacheEnabled, imageCacheDays, thumbnailQuality
         case clearCache, rydEnabled
         case sponsorBlockEnabled, sponsorBlockSettings
-        case notificationSettings
         case playbackChain
         case resetIdentity
         case solverEndpoint
         case mainThreadWatchdog
         case shareLog
-        case feedback, support
+        case creditsOpalineRepo, support
         case aboutVersion, aboutSystem, aboutModel
     }
     enum Page {
-        case root, appearance, language, playback, shorts
+        case root, appearance, language, playback, credits, creditsOpaline
         case sponsorBlock, cache, debug, downloads
     }
     struct Section {
@@ -188,7 +186,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             return pageCell
         }
         switch row {
-        case .pageAppearance, .pageLanguage, .pagePlayback, .pageShorts,
+        case .pageAppearance, .pageLanguage, .pagePlayback, .pageCredits, .pageCreditsOpaline,
              .pageSponsorBlock, .pageCache, .pageDebug, .pageDownloads:
             return UITableViewCell()  // unreachable: makePageCell handles these
         case .theme:
@@ -266,20 +264,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                 "settings.row.zoomToFill".localized, isOn: isOn
             ) {
                 UserDefaults.standard.set($0, forKey: key)
-            }
-        case .showShorts:
-            return makeShowShortsCell()
-        case .shortsPlayer:
-            return makeDisclosureCell(
-                "settings.row.shortsPlayer".localized,
-                value: ShortsPlayerMode.selected.displayName
-            )
-        case .shortsGrouping:
-            return makeToggleCell(
-                "settings.row.shortsGrouping".localized,
-                isOn: ShortsGrouping.isEnabled
-            ) {
-                ShortsGrouping.isEnabled = $0
             }
         case .autoplayEnabled:
             return makeToggleCell(
@@ -368,12 +352,10 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             return makeDisclosureCell(
                 "settings.row.sponsorblockSettings".localized
             )
-        case .notificationSettings:
-            return makeDisclosureCell("settings.row.notifications".localized)
         case .shareLog:
             return makeDisclosureCell("settings.row.shareLog".localized)
-        case .feedback:
-            return makeDisclosureCell("settings.row.feedback".localized)
+        case .creditsOpalineRepo:
+            return makeDisclosureCell("Source code on GitHub")
         case .support:
             return makeDisclosureCell("settings.row.support".localized)
         case .aboutVersion, .aboutSystem, .aboutModel:
@@ -417,7 +399,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             handlePageSelection,
             handleDebugSelection, handleThemeSelection,
             handleLanguageSelection, handleAutoDubSelection,
-            handleNotificationsSelection, handleAboutSelection,
+            handleAboutSelection,
             handleDownloadSelection,
             handleGeneralSelection
         ]
@@ -442,8 +424,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         switch row {
         case .quality, .qualityCellular:
             showQualityPicker(forCellular: row == .qualityCellular)
-        case .shortsPlayer:
-            showShortsPlayerPicker()
         case .feedCacheDays:
             showFeedCacheDaysPicker()
         case .imageCacheDays:
@@ -464,8 +444,8 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         switch row {
         case .shareLog:
             shareDebugLog()
-        case .feedback:
-            if let url = AppURLs.Feedback.issues {
+        case .creditsOpalineRepo:
+            if let url = URL(string: AppURLs.Credits.opaline) {
                 UIApplication.shared.open(url)
             }
         case .support:
@@ -487,23 +467,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         return true
     }
 
-    private func makeShowShortsCell() -> UITableViewCell {
-        let isOn = UserDefaults.standard.bool(forKey: UserDefaultsKeys.Feed.showShorts)
-        return makeToggleCell(
-            "settings.row.showShorts".localized,
-            isOn: isOn
-        ) {
-            UserDefaults.standard.set(
-                $0, forKey: UserDefaultsKeys.Feed.showShorts
-            )
-            NotificationCenter.default.post(
-                name: .showShortsSettingDidChange,
-                object: nil
-            )
-            self.reloadSection(containing: .showShorts)
-        }
-    }
-
     private func showThumbnailQualityPicker() {
         let sheet = UIAlertController(
             title: "settings.row.thumbnailQuality".localized,
@@ -518,29 +481,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                 self.reloadAllSettings()
             }
             if quality == ThumbnailQuality.selected {
-                action.setValue(true, forKey: "checked")
-            }
-            sheet.addAction(action)
-        }
-        sheet.addAction(UIAlertAction(title: "common.cancel".localized, style: .cancel))
-        configureCenteredPopover(sheet)
-        present(sheet, animated: true)
-    }
-
-    private func showShortsPlayerPicker() {
-        let sheet = UIAlertController(
-            title: "settings.row.shortsPlayer".localized,
-            message: nil,
-            preferredStyle: .actionSheet
-        )
-        for mode in ShortsPlayerMode.allCases {
-            let action = UIAlertAction(
-                title: mode.displayName, style: .default
-            ) { _ in
-                ShortsPlayerMode.selected = mode
-                self.reloadAllSettings()
-            }
-            if mode == ShortsPlayerMode.selected {
                 action.setValue(true, forKey: "checked")
             }
             sheet.addAction(action)

@@ -13,16 +13,11 @@ class SubscriptionsViewController: UIViewController, ScrollableToTop {
         String
     ) -> UIViewController
     let videoRouter: VideoRouter
-    /// Long-form videos only while grouping is on — shorts are then pulled
-    /// out into `shortsShelf`.
+    /// The feed, shorts included as ordinary videos.
     var videos: [Video] = [] {
         didSet { rebuildRows() }
     }
-    /// The feed's shorts, shown in the shelf row rather than the list.
-    var shortsShelf: [Video] = [] {
-        didSet { rebuildRows() }
-    }
-    /// `shortsShelf` + `videos` flattened into table rows.
+    /// `videos` as table rows.
     var rows: [FeedRow] = []
     var continuationToken: String?
     var isLoadingMore = false
@@ -34,7 +29,6 @@ class SubscriptionsViewController: UIViewController, ScrollableToTop {
     var subscribedChannels: [SubscribedChannel] = []
     var selectedChannel: SubscribedChannel?
     var stashedVideos: [Video] = []
-    var stashedShorts: [Video] = []
     var stashedContinuation: String?
     var stashedSeenVideoIds: Set<String> = []
     var isLoadingInitial = true
@@ -88,18 +82,6 @@ class SubscriptionsViewController: UIViewController, ScrollableToTop {
             name: ThemeManager.didChangeNotification,
             object: nil
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleShowShortsChange),
-            name: .showShortsSettingDidChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleShowShortsChange),
-            name: .shortsGroupingSettingDidChange,
-            object: nil
-        )
         ToolbarManager.shared.install(in: self)
         observeTokenRefresh()
         loadInitialContent()
@@ -148,13 +130,5 @@ class SubscriptionsViewController: UIViewController, ScrollableToTop {
         cache.clearSubscribedChannels()
         loadFeed()
         loadSubscribedChannels(force: true)
-    }
-
-    @objc
-    func handleShowShortsChange() {
-        cache.clearSubscriptionsFeed()
-        loadFeed()
-        newContentUploads = [:]
-        refreshNewContentDots()
     }
 }

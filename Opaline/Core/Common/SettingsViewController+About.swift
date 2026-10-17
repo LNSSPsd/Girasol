@@ -67,7 +67,9 @@ extension SettingsViewController {
         cell.detailTextLabel?.text      = aboutValue(for: row)
         cell.detailTextLabel?.textColor = theme.secondaryText
         cell.backgroundColor            = theme.surface
-        let icon = UIImageView(image: UIImage(named: "icon_copy"))
+        let icon = UIImageView(
+            image: UIImage(named: "icon_copy")?.withRenderingMode(.alwaysTemplate)
+        )
         icon.tintColor = theme.secondaryText
         icon.frame = CGRect(x: 0, y: 0, width: 18, height: 18)
         cell.accessoryView = icon

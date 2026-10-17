@@ -15,7 +15,8 @@ extension SettingsViewController {
         .appearance: "settings.section.appearance",
         .language: "settings.section.language",
         .playback: "settings.section.playback",
-        .shorts: "shorts.shelf.title",
+        .credits: "Credits",
+        .creditsOpaline: "Opaline",
         .sponsorBlock: "settings.section.sponsorblock",
         .cache: "settings.section.cache",
         .debug: "settings.section.debug",
@@ -26,7 +27,8 @@ extension SettingsViewController {
         .pageAppearance: .appearance,
         .pageLanguage: .language,
         .pagePlayback: .playback,
-        .pageShorts: .shorts,
+        .pageCredits: .credits,
+        .pageCreditsOpaline: .creditsOpaline,
         .pageSponsorBlock: .sponsorBlock,
         .pageCache: .cache,
         .pageDownloads: .downloads,
@@ -45,8 +47,10 @@ extension SettingsViewController {
             return languageSections
         case .playback:
             return playbackSections
-        case .shorts:
-            return shortsSections
+        case .credits:
+            return creditsSections
+        case .creditsOpaline:
+            return creditsOpalineSections
         case .sponsorBlock:
             return sponsorBlockSections
         case .cache:
@@ -58,8 +62,7 @@ extension SettingsViewController {
         }
     }
 
-    /// Category rows push a child page; `.notificationSettings` and
-    /// `.feedback` keep their existing handlers.
+    /// Category rows push a child page.
     private var rootSections: [Section] {
         [
             Section(
@@ -67,15 +70,15 @@ extension SettingsViewController {
                 footer: nil,
                 rows: [
                     .pageAppearance, .pageLanguage,
-                    .pagePlayback, .pageShorts, .pageDownloads,
-                    .notificationSettings, .pageSponsorBlock,
+                    .pagePlayback, .pageDownloads,
+                    .pageSponsorBlock,
                     .pageCache, .pageDebug
                 ]
             ),
             Section(
                 header: nil,
                 footer: nil,
-                rows: [.feedback, .support]
+                rows: [.pageCredits]
             ),
             Section(
                 header: "settings.section.about".localized,
@@ -158,16 +161,20 @@ extension SettingsViewController {
         ]
     }
 
-    private var shortsSections: [Section] {
-        var rows: [Row] = [.showShorts]
-        if UserDefaults.standard.bool(forKey: UserDefaultsKeys.Feed.showShorts) {
-            rows.append(contentsOf: [.shortsPlayer, .shortsGrouping])
-        }
-        return [
+    /// The projects this fork is built on, each with its own page.
+    private var creditsSections: [Section] {
+        [Section(header: nil, footer: "Girasol is built on the projects above.", rows: [.pageCreditsOpaline])]
+    }
+
+    /// The original app and its author: where to find it, and supporting
+    /// its development. This fork's own problems are not theirs to field,
+    /// so there is no feedback row.
+    private var creditsOpalineSections: [Section] {
+        [
             Section(
                 header: nil,
-                footer: "settings.footer.shorts".localized,
-                rows: rows
+                footer: "Opaline, the YouTube client for older iOS this app is built on, by verback2308.",
+                rows: [.creditsOpalineRepo, .support]
             )
         ]
     }

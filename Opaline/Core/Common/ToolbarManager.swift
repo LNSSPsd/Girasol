@@ -6,7 +6,7 @@ import UIKit
 private var resizedNavBarIconCache: [String: UIImage] = [:]
 
 /// Nav-bar icons are PNG assets drawn at their point size and tinted by the
-/// bar; shared with `NotificationsBellButton`.
+/// bar.
 func resizedNavBarIcon(_ name: String, size: CGFloat) -> UIImage? {
     let key = "\(name)@\(size)"
     if let cached = resizedNavBarIconCache[key] {
@@ -56,10 +56,7 @@ final class ToolbarManager {
         )
 
         vc.navigationItem.rightBarButtonItems = [profileBtn, settingsBtn, searchBtn]
-        vc.navigationItem.leftBarButtonItem = makeBellButton(
-            target: vc,
-            action: #selector(UIViewController.toolbarOpenNotifications)
-        )
+        vc.navigationItem.leftBarButtonItems = [ModeSwitch.barButton()]
         NotificationCenter.default.addObserver(
             vc,
             selector: #selector(UIViewController.toolbarRefreshProfileButton),
@@ -76,12 +73,6 @@ final class ToolbarManager {
         return UIBarButtonItem(customView: button)
     }
 
-    private func makeBellButton(target: AnyObject, action: Selector) -> UIBarButtonItem {
-        let button = NotificationsBellButton()
-        button.addTarget(target, action: action, for: .touchUpInside)
-        button.addTapFeedback()
-        return UIBarButtonItem(customView: button)
-    }
 }
 
 // MARK: - UIViewController extension for toolbar actions
@@ -100,22 +91,12 @@ extension UIViewController {
         navigationController?.pushViewController(searchVC, animated: true)
     }
 
-    @objc
-    func toolbarOpenNotifications() {
-        NotificationsViewController.present(from: self)
-    }
 
     @objc
     func toolbarOpenSettings() {
         Feedback.tap()
         let nav = RotatingNavigationController(rootViewController: SettingsViewController())
         nav.modalPresentationStyle = .pageSheet
-        if #available(iOS 15, *) {
-            if let sheet = nav.sheetPresentationController {
-                sheet.detents = [.medium(), .large()]
-                sheet.prefersGrabberVisible = true
-            }
-        }
         present(nav, animated: true)
     }
 
@@ -214,7 +195,7 @@ final class ProfileAvatarButton: UIButton {
 
     private func defaultImage() -> UIImage? {
         if let asset = UIImage(named: "icon_person_fill") {
-            return asset
+            return asset.withRenderingMode(.alwaysTemplate)
         }
         if #available(iOS 13, *) {
             let config = UIImage.SymbolConfiguration(pointSize: size, weight: .light)

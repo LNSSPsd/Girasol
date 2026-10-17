@@ -4,13 +4,19 @@ final class VideoRouter {
     static let shared = VideoRouter()
 
     var watchViewControllerFactory: ((Video) -> WatchViewController)?
-    /// Shorts open in their own full-screen vertical feed, not the watch screen.
-    var shortsViewControllerFactory: ((Video, ShortsEntry) -> UIViewController)?
     /// Lets Core screens push a channel without importing Features.
     var channelViewControllerFactory: ((String, String) -> UIViewController)?
     /// Same idea for a playlist opened from a link.
     var playlistViewControllerFactory: ((Playlist) -> UIViewController)?
     private var panel: PlayerPanelViewController?
+
+    /// Posted when the player closes.
+    static let didCloseNotification = Notification.Name("VideoRouter.didClose")
+
+    /// A video is open (full or mini), in this mode or parked by music mode.
+    var hasPlayer: Bool {
+        panel != nil
+    }
 
     /// The video currently loaded in the mini/full player, if any — lets
     /// `VideoActionMenu` seed an empty queue with the right "now playing"
@@ -33,24 +39,13 @@ final class VideoRouter {
 
     private init() {}
 
-    /// - Parameter shorts: how the shorts feed continues past `video` —
-    ///   see `ShortsEntry`.
-    func open(
-        video: Video,
-        from presenter: UIViewController,
-        shorts: ShortsEntry = .pool([])
-    ) {
-        if video.isShort,
-           ShortsPlayerMode.selected == .vertical,
-           let makeShorts = shortsViewControllerFactory {
-            // The outermost one: Library's segments sit in an embedded
-            // navigation controller whose view stops below the status bar,
-            // and a full-screen feed pushed there leaves that strip showing
-            // the screen underneath.
-            presenter.visibleNavigationController?.pushViewController(
-                makeShorts(video, shorts), animated: true
-            )
-            return
+    /// Every video opens in the watch screen — Shorts are gone from this
+    /// fork; a short opened from a link plays like any video.
+    func open(video: Video, from presenter: UIViewController) {
+        // A song left playing from music mode ends here.
+        if MusicPlayer.shared.isActive {
+            MusicPlayer.shared.stop()
+            AudioOnlyMode.isEnabled = false
         }
         if let panel {
             panel.watchVC.loadVideo(video)
@@ -65,6 +60,7 @@ final class VideoRouter {
         let newPanel = PlayerPanelViewController(watchVC: watchVC)
         newPanel.onClose = { [weak self] in
             self?.panel = nil
+            NotificationCenter.default.post(name: Self.didCloseNotification, object: nil)
         }
         panel = newPanel
         guard let tabBar = findTabBarController(from: presenter) else {
@@ -159,6 +155,33 @@ final class VideoRouter {
 
     func clearCurrentWatch() {
         panel?.close()
+    }
+
+    /// Shows the open video in `bar` — music mode's copy of the mini
+    /// player. Tapping it goes back to video mode with the player expanded;
+    /// ✕ closes the video. False when no video is open.
+    func showMiniPlayer(in bar: MiniPlayerBar) -> Bool {
+        guard let watchVC = panel?.watchVC else {
+            return false
+        }
+        let video = watchVC.watchPage?.video ?? watchVC.initialVideo
+        let player = watchVC.videoPlayerView?.player
+        bar.update(
+            title: video.title,
+            channel: video.channelName,
+            isPlaying: (player?.rate ?? 0) != 0,
+            thumbnailURL: video.thumbnailURL
+        )
+        bar.attachPlayer(player)
+        bar.applyTheme()
+        bar.onTap = { [weak self] in
+            MusicMode.setEnabled(false)
+            self?.panel?.expand(animated: true)
+        }
+        bar.onClose = { [weak self] in
+            self?.clearCurrentWatch()
+        }
+        return true
     }
 
     private func findTabBarController(from vc: UIViewController) -> MainTabBarController? {

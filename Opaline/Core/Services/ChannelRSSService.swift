@@ -1,11 +1,10 @@
 import Foundation
 
-/// Which of a channel's Atom feeds to read: everything, the long-form
-/// `UULF` system playlist, or the Shorts-only `UUSH` one.
+/// Which of a channel's Atom feeds to read: everything, or the long-form
+/// `UULF` system playlist.
 enum RSSFeedVariant {
     case all
     case longForm
-    case shorts
 }
 
 /// One video entry from a channel's public Atom feed.
@@ -29,18 +28,6 @@ protocol ChannelRSSFeedService: AnyObject {
     func fetchRecentUploads(
         channelIds: [String],
         includeShorts: Bool,
-        completion: @escaping ([String: [RSSVideoEntry]]) -> Void
-    )
-
-    /// Recent shorts per channel, straight from the `UUSH` playlist feed —
-    /// one request per channel, no guessing. Channels without that feed are
-    /// omitted. Completion fires on the main queue, once every feed is in:
-    /// the list is date-sorted, so a partial answer would reshuffle the
-    /// screen under the reader. `force` drops the cached feeds first — what
-    /// pull-to-refresh means.
-    func fetchRecentShorts(
-        channelIds: [String],
-        force: Bool,
         completion: @escaping ([String: [RSSVideoEntry]]) -> Void
     )
 }
@@ -82,21 +69,6 @@ final class ChannelRSSService: ChannelRSSFeedService {
             variant: includeShorts ? .all : .longForm,
             completion: completion
         )
-    }
-
-    func fetchRecentShorts(
-        channelIds: [String],
-        force: Bool,
-        completion: @escaping ([String: [RSSVideoEntry]]) -> Void
-    ) {
-        if force {
-            queue.async { self.invalidate(channelIds, variant: .shorts) }
-        }
-        fetch(channelIds: channelIds, variant: .shorts) { shorts in
-            let count = shorts.values.reduce(0) { $0 + $1.count }
-            AppLog.subs("rss shorts: \(count) in \(shorts.count) channels")
-            completion(shorts)
-        }
     }
 
     private func fetch(

@@ -191,18 +191,7 @@ class VideosViewController: UIViewController, ScrollableToTop {
     // Kept in the class body (not the extension) so subclasses can
     // override it.
     func openVideo(_ video: Video) {
-        // A grid is a visible order — swiping continues down it rather than
-        // through a shuffled pool, which is what a shelf gets.
-        let following = sections
-            .flatMap { $0.videos }
-            .filter { $0.isShort }
-            .drop { $0.id != video.id }
-            .dropFirst()
-        videoRouter.open(
-            video: video,
-            from: self,
-            shorts: .list(Array(following))
-        )
+        videoRouter.open(video: video, from: self)
     }
 
     @objc

@@ -131,6 +131,34 @@ enum AppLog {
     static func notifications(_ msg: String) { log("Notifications", msg) }
     static func downloads(_ msg: String) { log("Downloads", msg) }
     static func perf(_ msg: String) { log("Perf", msg) }
+    static func nav(_ msg: String) { log("Nav", msg) }
+
+    /// Key tree of a JSON value (first element of each array), for logging
+    /// a response whose layout a parser did not expect.
+    static func shape(of value: Any, depth: Int = 0, maxDepth: Int = 9) -> String {
+        let pad = String(repeating: " ", count: depth)
+        if let dict = value as? [String: Any] {
+            guard depth < maxDepth else {
+                return pad + "{…}\n"
+            }
+            return dict.keys.sorted().map { key -> String in
+                let child = dict[key] as Any
+                if child is [String: Any] || child is [Any] {
+                    return pad + key + "\n"
+                        + shape(of: child, depth: depth + 1, maxDepth: maxDepth)
+                }
+                return pad + key + " = " + String(describing: child).prefix(80) + "\n"
+            }.joined()
+        }
+        if let array = value as? [Any] {
+            guard let first = array.first else {
+                return pad + "[]\n"
+            }
+            return pad + "[\(array.count)]\n"
+                + shape(of: first, depth: depth + 1, maxDepth: maxDepth)
+        }
+        return pad + String(describing: value).prefix(80) + "\n"
+    }
 
     /// First line of every session: which build is running, on what. Without
     /// it a log is ambiguous — the same symptom means different things on a

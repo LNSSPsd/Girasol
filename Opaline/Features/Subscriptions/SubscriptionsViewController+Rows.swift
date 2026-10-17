@@ -1,19 +1,14 @@
 import UIKit
 
-/// A row of the subscriptions list: either a video, or the shelf holding the
-/// feed's shorts.
+/// A row of the subscriptions list. Shorts are ordinary rows: a short a
+/// subscribed channel posted plays in the normal player.
 enum FeedRow {
     case video(Video)
-    case shortsShelf([Video])
 }
 
 extension SubscriptionsViewController {
-    /// The shelf sits on top: the feed serves its shorts in one go, in the
-    /// first response, so there is nothing to spread further down.
     func rebuildRows() {
-        let shelf: [FeedRow] = shortsShelf.isEmpty
-            ? [] : [.shortsShelf(shortsShelf)]
-        rows = shelf + videos.map(FeedRow.video)
+        rows = videos.map(FeedRow.video)
     }
 }
 
@@ -27,9 +22,6 @@ extension SubscriptionsViewController: UITableViewDataSource {
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if !isLoadingInitial, case let .shortsShelf(shorts) = rows[indexPath.row] {
-            return shortsShelfCell(for: indexPath, shorts: shorts)
-        }
         guard let cell = tableView.dequeueReusableCell(
             withIdentifier: SubscriptionVideoCell.reuseId,
             for: indexPath
@@ -46,45 +38,6 @@ extension SubscriptionsViewController: UITableViewDataSource {
         cell.configure(with: video)
         attachHandlers(to: cell, video: video)
         return cell
-    }
-
-    private func shortsShelfCell(
-        for indexPath: IndexPath,
-        shorts: [Video]
-    ) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(
-            withIdentifier: ShortsShelfCell.reuseId, for: indexPath
-        ) as? ShortsShelfCell else {
-            return UITableViewCell()
-        }
-        cell.configure(with: shorts)
-        cell.onSeeAll = { [weak self] in
-            self?.openAllShorts()
-        }
-        cell.onSelect = { [weak self] index in
-            guard let self, index < shorts.count else {
-                return
-            }
-            self.videoRouter.open(
-                video: shorts[index], from: self, shorts: .pool(shorts)
-            )
-        }
-        return cell
-    }
-
-    /// The feed's twelve are all it has; the full list comes from the
-    /// channels' own feeds, fetched only when this screen opens. Under a
-    /// channel filter the screen stays scoped to that one channel.
-    private func openAllShorts() {
-        navigationController?.pushViewController(
-            SubscriptionShortsViewController(
-                channels: selectedChannel.map { [$0] } ?? subscribedChannels,
-                rssService: channelRSSService,
-                channelViewControllerFactory: channelViewControllerFactory,
-                videoRouter: videoRouter
-            ),
-            animated: true
-        )
     }
 
     private func attachHandlers(to cell: SubscriptionVideoCell, video: Video) {
@@ -115,7 +68,6 @@ extension SubscriptionsViewController: UITableViewDataSource {
                 anchor: anchor,
                 onRemoved: { [weak self] in
                     self?.videos.removeAll { $0.id == video.id }
-                    self?.shortsShelf.removeAll { $0.id == video.id }
                     self?.tableView.reloadData()
                 },
                 feedbackOutcome: .removed
@@ -151,8 +103,6 @@ extension SubscriptionsViewController: UITableViewDelegate {
             )
         }
         switch rows[indexPath.row] {
-        case .shortsShelf:
-            return ShortsShelfCell.rowHeight
         case let .video(video):
             return SubscriptionVideoCell.rowHeight(
                 forWidth: tableView.bounds.width, title: video.title

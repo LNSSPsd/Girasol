@@ -65,6 +65,8 @@ extension WatchViewController {
         PlaybackBufferPolicy.configure(item: item)
         startObservingPlayerItem(item)
         player.replaceCurrentItem(with: item)
+        // A quality switch made in the background left its "Loading…" up.
+        playerStatusLabel.isHidden = true
         // The duration KVO binds player.currentItem — rebind after the swap.
         videoPlayerView?.rebind(player: player)
         player.play()

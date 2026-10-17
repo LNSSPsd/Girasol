@@ -43,12 +43,14 @@ extension VideoDownloader {
         )
         let composition = AVMutableComposition()
         do {
-            try append(
-                url: video,
-                type: .video,
-                trueMs: option.video.approxDurationMs,
-                to: composition
-            )
+            if let videoFormat = option.video {
+                try append(
+                    url: video,
+                    type: .video,
+                    trueMs: videoFormat.approxDurationMs,
+                    to: composition
+                )
+            }
             try append(
                 url: audio,
                 type: .audio,

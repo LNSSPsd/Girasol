@@ -39,6 +39,7 @@ final class RotatingNavigationController: UINavigationController {
         // Replacing the system back button disables the edge-swipe pop
         // gesture; re-enable it (guarded so the root screen never pops).
         interactivePopGestureRecognizer?.delegate = self
+        installFullWidthBackSwipe()
         delegate = self
         applyBarTheme()
         NotificationCenter.default.addObserver(
@@ -90,7 +91,24 @@ final class RotatingNavigationController: UINavigationController {
                 action: #selector(popTapped)
             )
         }
+        AppLog.nav(
+            "push \(type(of: viewController)) onto \(navName) animated=\(animated)"
+                + " busy=\(transitionCoordinator != nil)"
+        )
         super.pushViewController(viewController, animated: animated)
+    }
+
+    override func popViewController(animated: Bool) -> UIViewController? {
+        AppLog.nav(
+            "pop \(navName) animated=\(animated) busy=\(transitionCoordinator != nil)"
+        )
+        return super.popViewController(animated: animated)
+    }
+
+    /// Which navigation controller a log line is about: named after its root.
+    var navName: String {
+        let root = viewControllers.first.map { "\(type(of: $0))" } ?? "empty"
+        return "nav(\(root), \(viewControllers.count))"
     }
 
     @objc
@@ -99,9 +117,76 @@ final class RotatingNavigationController: UINavigationController {
     }
 }
 
+/// A screen that can be swiped back from anywhere on it, not only from the
+/// screen edge (music lists: the edge strip lost to vertical scrolling).
+protocol FullWidthBackSwipe: UIViewController {}
+
 extension RotatingNavigationController: UIGestureRecognizerDelegate {
+    private static var fullWidthPanKey = 0
+
+    /// A pan over the whole screen that drives the system's own interactive
+    /// pop (same targets as the edge recognizer), so it looks and cancels
+    /// exactly like the edge swipe.
+    private func installFullWidthBackSwipe() {
+        guard let edge = interactivePopGestureRecognizer, let targets = edge.value(forKey: "targets") else {
+            return
+        }
+        let pan = UIPanGestureRecognizer()
+        pan.setValue(targets, forKey: "targets")
+        pan.delegate = self
+        view.addGestureRecognizer(pan)
+        objc_setAssociatedObject(self, &Self.fullWidthPanKey, pan, .OBJC_ASSOCIATION_ASSIGN)
+    }
+
+    private var fullWidthPan: UIGestureRecognizer? {
+        objc_getAssociatedObject(self, &Self.fullWidthPanKey) as? UIGestureRecognizer
+    }
+
+    /// Clearly sideways and to the right, and not inside something that
+    /// scrolls sideways and can still go back.
+    private func fullWidthPanShouldBegin(_ pan: UIPanGestureRecognizer) -> Bool {
+        guard topViewController is FullWidthBackSwipe else {
+            return false
+        }
+        let velocity = pan.velocity(in: view)
+        guard velocity.x > 0, abs(velocity.x) > abs(velocity.y) * 1.5 else {
+            return false
+        }
+        var hit = view.hitTest(pan.location(in: view), with: nil)
+        while let current = hit {
+            if let scroll = current as? UIScrollView,
+               scroll.contentSize.width > scroll.bounds.width + 1,
+               scroll.contentOffset.x > -scroll.adjustedContentInset.left {
+                return false
+            }
+            hit = current.superview
+        }
+        return true
+    }
+
+    /// On a full-width screen, the lists' own pans wait for the sideways
+    /// check — else a slightly diagonal swipe back became a scroll.
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        gestureRecognizer === fullWidthPan
+            && topViewController is FullWidthBackSwipe
+            && otherGestureRecognizer.view is UIScrollView
+    }
+
+    /// The system delegate this replaces also refuses the swipe while a push
+    /// or pop is still animating. A pop started mid-transition (back out of a
+    /// playlist right as it slides in) leaves the stack half-transitioned:
+    /// the next push never finishes and every touch is swallowed from then
+    /// on — the whole UI looks frozen.
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        viewControllers.count > 1
+        if gestureRecognizer === fullWidthPan, let pan = gestureRecognizer as? UIPanGestureRecognizer {
+            return viewControllers.count > 1 && transitionCoordinator == nil && fullWidthPanShouldBegin(pan)
+        }
+        let begin = viewControllers.count > 1 && transitionCoordinator == nil
+        AppLog.nav("swipe-back on \(navName): \(begin ? "begins" : "refused")")
+        return begin
     }
 }
 
@@ -131,6 +216,7 @@ extension RotatingNavigationController: UINavigationControllerDelegate {
         willShow viewController: UIViewController,
         animated: Bool
     ) {
+        AppLog.nav("willShow \(type(of: viewController)) in \(navName)")
         Self.realignChevron(of: viewController)
         guard let coordinator = navigationController.transitionCoordinator else {
             return
@@ -143,6 +229,10 @@ extension RotatingNavigationController: UINavigationControllerDelegate {
                 Self.realignChevron(of: viewController)
             },
             completion: { context in
+                AppLog.nav(
+                    "transition to \(type(of: viewController))"
+                        + (context.isCancelled ? " cancelled" : " finished")
+                )
                 let shown = context.isCancelled
                     ? navigationController.topViewController
                     : viewController
@@ -156,6 +246,7 @@ extension RotatingNavigationController: UINavigationControllerDelegate {
         didShow viewController: UIViewController,
         animated: Bool
     ) {
+        AppLog.nav("didShow \(type(of: viewController)) in \(navName)")
         Self.realignChevron(of: viewController)
     }
 }

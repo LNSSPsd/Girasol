@@ -5,15 +5,10 @@ import Foundation
 enum DefaultTab: Int, CaseIterable {
     case home = 0
     case subscriptions = 1
-    case shorts = 3
     case library = 2
 
-    /// Shorts is offered only while its tab exists.
     static var available: [DefaultTab] {
-        allCases.filter {
-            $0 != .shorts
-                || UserDefaults.standard.bool(forKey: UserDefaultsKeys.Feed.showShorts)
-        }
+        allCases
     }
 
     static var selected: DefaultTab {
@@ -22,8 +17,7 @@ enum DefaultTab: Int, CaseIterable {
                 forKey: UserDefaultsKeys.Feed.defaultTab
             )
             let stored = DefaultTab(rawValue: raw) ?? .home
-            // Shorts may have been turned off since — its tab is gone, so
-            // the launch tab and the settings row both fall back to Home.
+            // A stored Shorts tab (gone from this fork) falls back to Home.
             return available.contains(stored) ? stored : .home
         }
         set {
@@ -42,8 +36,6 @@ enum DefaultTab: Int, CaseIterable {
             return "home.title".localized
         case .subscriptions:
             return "subscriptions.title".localized
-        case .shorts:
-            return "shorts.shelf.title".localized
         case .library:
             return "library.title".localized
         }

@@ -109,7 +109,7 @@ enum VideoRendererParserChain {
     }
 
     /// Convenience: maps a list of items to videos, skipping unrecognised items.
-    /// Shorts are excluded unless the showShorts setting is on.
+    /// Shorts are excluded unless `ShortsFilter` keeps them.
     /// Also extracts inline watch progress from thumbnail overlays.
     static func videos(from items: [[String: Any]]) -> [Video] {
         items.compactMap { item in
@@ -124,7 +124,7 @@ enum VideoRendererParserChain {
     }
 
     /// Convenience: maps items to videos AND extracts the first continuation token found.
-    /// Shorts are excluded unless the showShorts setting is on.
+    /// Shorts are excluded unless `ShortsFilter` keeps them.
     /// Also extracts inline watch progress from thumbnail overlays.
     static func parse(items: [[String: Any]]) -> (videos: [Video], continuation: String?) {
         var videos: [Video] = []
@@ -248,12 +248,10 @@ enum VideoRendererParserChain {
         return short
     }
 
-    /// Drops shorts when the setting is off. Filtering the parsed video rather
-    /// than the raw item catches the ones flagged by their shelf as well.
+    /// Drops shorts outside the surfaces that keep them (`ShortsFilter`).
+    /// Filtering the parsed video rather than the raw item catches the ones
+    /// flagged by their shelf as well.
     private static func kept(_ video: Video) -> Video? {
-        let showShorts = UserDefaults.standard.bool(
-            forKey: UserDefaultsKeys.Feed.showShorts
-        )
-        return !showShorts && video.isShort ? nil : video
+        !ShortsFilter.keeps && video.isShort ? nil : video
     }
 }

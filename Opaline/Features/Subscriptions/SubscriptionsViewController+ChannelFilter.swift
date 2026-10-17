@@ -59,11 +59,9 @@ extension SubscriptionsViewController {
         title = "subscriptions.title".localized
         navigationItem.leftBarButtonItem = nil
         videos = stashedVideos
-        shortsShelf = stashedShorts
         continuationToken = stashedContinuation
         seenVideoIds = stashedSeenVideoIds
         stashedVideos = []
-        stashedShorts = []
         stashedContinuation = nil
         stashedSeenVideoIds = []
         isLoadingInitial = false
@@ -78,7 +76,6 @@ private extension SubscriptionsViewController {
     func enterChannelFilter(_ channel: SubscribedChannel) {
         if selectedChannel == nil {
             stashedVideos = videos
-            stashedShorts = shortsShelf
             stashedContinuation = continuationToken
             stashedSeenVideoIds = seenVideoIds
         }
@@ -89,7 +86,6 @@ private extension SubscriptionsViewController {
         isLoadingInitial = true
         isLoadingMore = false
         videos = []
-        shortsShelf = []
         continuationToken = nil
         tableView.reloadData()
         loadChannelVideos(channel)
@@ -160,14 +156,10 @@ extension SubscriptionsViewController {
         switch result {
         case .success(let tabPage):
             setPage(enrichedWithSelectedChannel(tabPage.feedPage))
-            if let channel = selectedChannel {
-                loadChannelShorts(channel)
-            }
         case .failure(let error):
             AppLog.subs("channel filter load failed: \(error)")
             isLoadingInitial = false
             videos = []
-            shortsShelf = []
             continuationToken = nil
             tableView.reloadData()
         }

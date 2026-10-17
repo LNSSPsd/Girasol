@@ -78,10 +78,12 @@ extension InnertubeClient {
         token: String,
         completion: @escaping (Result<FeedPage, Error>) -> Void
     ) {
+        // A subscribed channel's shorts stay in the feed.
         executeBrowse(
             browseId: browseId,
             continuation: continuation,
-            token: token
+            token: token,
+            keepsShorts: true
         ) { result in
             completion(result.map(Self.sortedByPublishedDate))
         }
@@ -197,6 +199,7 @@ extension InnertubeClient {
         browseId: String?,
         continuation: String?,
         token: String,
+        keepsShorts: Bool = false,
         completion: @escaping (Result<FeedPage, Error>) -> Void
     ) {
         var body = tvContext
@@ -212,7 +215,9 @@ extension InnertubeClient {
             headers: authHeaders(token: token),
             logTag: "browse(\(browseId ?? "cont"))"
         ) { json -> FeedPage? in
-            let page = InnertubeClient.parsePageJSON(json)
+            let page = keepsShorts
+                ? ShortsFilter.keeping { InnertubeClient.parsePageJSON(json) }
+                : InnertubeClient.parsePageJSON(json)
             return page.videos.isEmpty ? nil : page
         } completion: { completion($0) }
     }

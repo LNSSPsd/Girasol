@@ -108,6 +108,8 @@ enum InnertubeEndpoint {
     static let removeLike = "/like/removelike"
     static let editPlaylist = "/browse/edit_playlist"
     static let addToPlaylist = "/playlist/get_add_to_playlist"
+    static let createPlaylist = "/playlist/create"
+    static let deletePlaylist = "/playlist/delete"
     static let commentCreate = "/comment/create_comment"
     static let getComments   = "/comment/get_comments"
     static let reelSequence  = "/reel/reel_watch_sequence"
