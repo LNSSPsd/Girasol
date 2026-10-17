@@ -92,9 +92,9 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		return @"YouTube Music often lists a song's music video in its place, which can differ from the album "
 		       @"version (a radio edit, an intro). On: the album version plays.";
 	if (section == OPSectionTitles)
-		return @"In English, YouTube Music names Japanese album tracks twice (original and romanized). On: only the "
-		       @"original title. Applies to lists loaded from now on; artist and album names stay as YouTube Music "
-		       @"gives them.";
+		return @"In English, YouTube Music adds a romanized name to Japanese songs and romanizes Japanese artists "
+		       @"and albums. On: Japanese songs, artists and albums keep their original names. Applies to lists "
+		       @"loaded from now on.";
 	if (section == OPSectionLevel)
 		return @"Songs mastered louder than YouTube's loudness target are turned down to it, as YouTube's own "
 		       @"players do, so one song does not blast after a quiet one.";

@@ -121,6 +121,7 @@ enum YTMusicPublic {
         tag: String,
         signedIn: Bool = false,
         visitorData: String? = nil,
+        hl: String = "en",
         completion: @escaping ([String: Any]?) -> Void
     ) {
         guard let url = URL(string: "\(origin)/youtubei/v1/\(endpoint)?prettyPrint=false") else {
@@ -128,7 +129,7 @@ enum YTMusicPublic {
             return
         }
         var client: [String: Any] = [
-            "clientName": "WEB_REMIX", "clientVersion": clientVersion, "hl": "en", "gl": "US"
+            "clientName": "WEB_REMIX", "clientVersion": clientVersion, "hl": hl, "gl": "US"
         ]
         var full = body
         var request = URLRequest(url: url)
@@ -172,10 +173,25 @@ enum YTMusicPublic {
         filter params: String,
         completion: @escaping ([MusicEntry]) -> Void
     ) {
-        post("search", ["query": query, "params": params], tag: "search") { json in
+        let body: [String: Any] = ["query": query, "params": params]
+        post("search", body, tag: "search") { json in
             let entries = json.map { listItems(in: $0).compactMap(entry) } ?? []
             AppLog.innertube("ytmusic search \"\(query)\": \(entries.count) results")
-            DispatchQueue.main.async { completion(entries) }
+            let songs = entries.compactMap { entry -> Video? in
+                guard case let .song(video) = entry else {
+                    return nil
+                }
+                return video
+            }
+            nativeNames(of: songs, endpoint: "search", body: body, tag: "search ja") { names, _ in
+                let entries = entries.map { entry -> MusicEntry in
+                    guard case let .song(video) = entry else {
+                        return entry
+                    }
+                    return .song(native(video, names))
+                }
+                DispatchQueue.main.async { completion(entries) }
+            }
         }
     }
 
@@ -195,7 +211,12 @@ enum YTMusicPublic {
     ) {
         post("browse", ["browseId": browseId], tag: "album(\(browseId))") { json in
             let page = json.flatMap { parseAlbum($0, browseId: browseId) }
-            DispatchQueue.main.async { completion(page) }
+            nativeNames(
+                of: page?.tracks ?? [], endpoint: "browse", body: ["browseId": browseId], tag: "album ja"
+            ) { names, japanese in
+                let page = page.map { native($0, browseId: browseId, names, header: japanese) }
+                DispatchQueue.main.async { completion(page) }
+            }
         }
     }
 
@@ -223,12 +244,23 @@ enum YTMusicPublic {
             body["isAudioOnly"] = true
         }
         post("next", body, tag: "queue(\(playlistId ?? "continuation"))", signedIn: signedIn) { json in
-            let queue = json.map(parseWatchQueue)
+            var queue = json.map(parseWatchQueue)
             AppLog.innertube(
                 "ytmusic queue \(playlistId ?? "continued"): \(queue?.tracks.count ?? 0) tracks,"
                     + " more=\(queue?.continuation != nil)"
             )
-            DispatchQueue.main.async { completion(queue) }
+            nativeNames(
+                of: queue?.tracks ?? [], endpoint: "next", body: body, tag: "queue ja", signedIn: signedIn
+            ) { names, _ in
+                if let tracks = queue?.tracks {
+                    queue = MusicWatchQueue(
+                        tracks: tracks.map { native($0, names) },
+                        continuation: queue?.continuation,
+                        automix: queue?.automix
+                    )
+                }
+                DispatchQueue.main.async { completion(queue) }
+            }
         }
     }
 
@@ -1023,6 +1055,129 @@ enum YTMusicPublic {
             return dict.values.lazy.compactMap { firstString(named: key, in: $0) }.first
         }
         return (value as? [Any])?.lazy.compactMap { firstString(named: key, in: $0) }.first
+    }
+
+    // MARK: - Japanese names
+
+    /// A song's names as YouTube Music gives them in Japanese.
+    struct NativeNames {
+        let title: String
+        let artist: MusicArtistRef?
+        let album: MusicAlbumRef?
+    }
+
+    static func hasJapanese(_ text: String) -> Bool {
+        text.range(of: "[\\p{Hiragana}\\p{Katakana}\\p{Han}]", options: .regularExpression) != nil
+    }
+
+    /// In English, YouTube Music romanizes Japanese artists and albums
+    /// (a romaji name for a kanji one) and names no original; only a Japanese-language
+    /// answer has them, and its UI strings are Japanese too, which the
+    /// parsers cannot read. So when a list has Japanese song titles (setting
+    /// "Original Japanese titles"), the same request is made once more in
+    /// Japanese, and only names are taken from it — by video id, and by the
+    /// page type of the links, which no language changes.
+    private static func nativeNames(
+        of tracks: [Video],
+        endpoint: String,
+        body: [String: Any],
+        tag: String,
+        signedIn: Bool = false,
+        completion: @escaping ([String: NativeNames], [String: Any]?) -> Void
+    ) {
+        guard OPMusicSettings.originalTitles, tracks.contains(where: { hasJapanese($0.title) }) else {
+            completion([:], nil)
+            return
+        }
+        post(endpoint, body, tag: tag, signedIn: signedIn, hl: "ja") { json in
+            guard let json else {
+                completion([:], nil)
+                return
+            }
+            var names: [String: NativeNames] = [:]
+            var panels: [[String: Any]] = []
+            collect("playlistPanelVideoRenderer", in: json, into: &panels)
+            for panel in panels {
+                guard let videoId = panel["videoId"] as? String else {
+                    continue
+                }
+                let (artist, album) = bylineLinks(runs(panel["longBylineText"]))
+                names[videoId] = NativeNames(title: texts(panel["title"]), artist: artist, album: album)
+            }
+            for item in listItems(in: json) {
+                let columns = item["flexColumns"] as? [[String: Any]] ?? []
+                let columnRuns = columns.map {
+                    runs(($0["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any])?["text"])
+                }
+                let endpoint = item["navigationEndpoint"] as? [String: Any]
+                guard let videoId = (item["playlistItemData"] as? [String: Any])?["videoId"] as? String
+                    ?? endpoint?.digString("watchEndpoint", "videoId"),
+                    let title = columnRuns.first.map({ texts(["runs": $0]) }), !title.isEmpty
+                else {
+                    continue
+                }
+                let (artist, album) = bylineLinks(Array(columnRuns.dropFirst().joined()))
+                names[videoId] = NativeNames(title: title, artist: artist, album: album)
+            }
+            AppLog.innertube("ytmusic \(tag): \(names.count) names")
+            completion(names, json)
+        }
+    }
+
+    /// The track under its Japanese names, where there are any.
+    private static func native(_ video: Video, _ names: [String: NativeNames]) -> Video {
+        guard let found = names[video.id] else {
+            return video
+        }
+        let links = MusicTrackLinks.links(of: video.id)
+        MusicTrackLinks.note(video.id, artist: found.artist ?? links.artist, album: found.album ?? links.album)
+        var renamed = Video(
+            id: video.id,
+            title: found.title.isEmpty ? video.title : found.title,
+            channelId: video.channelId,
+            channelName: found.artist?.name ?? video.channelName,
+            channelAvatarURL: video.channelAvatarURL,
+            thumbnailURL: video.thumbnailURL,
+            viewCount: video.viewCount,
+            publishedAt: video.publishedAt,
+            duration: video.duration,
+            isLive: video.isLive,
+            playlistId: video.playlistId,
+            isShort: video.isShort
+        )
+        renamed.feedbackActions = video.feedbackActions
+        return renamed
+    }
+
+    /// The album page with its Japanese title and artist, and its tracks'.
+    private static func native(
+        _ page: MusicAlbumPage, browseId: String, _ names: [String: NativeNames], header json: [String: Any]?
+    ) -> MusicAlbumPage {
+        guard let json else {
+            return page
+        }
+        let header = firstDict(named: "musicResponsiveHeaderRenderer", in: json)
+            ?? firstDict(named: "musicDetailHeaderRenderer", in: json)
+        let title = texts(header?["title"])
+        let (artist, _) = bylineLinks(runs(header?["straplineTextOne"]) + runs(header?["subtitle"]))
+        let pageArtist = artist ?? page.artist
+        let album = MusicAlbumRef(
+            browseId: browseId, title: title.isEmpty ? page.title : title, subtitle: page.subtitle,
+            thumbnailURL: page.thumbnailURL
+        )
+        let tracks = page.tracks.map { track -> Video in
+            var renamed = native(track, names)
+            // Album tracks often name no artist of their own: the album's.
+            if names[track.id]?.artist == nil, track.channelId == page.artist?.browseId, let pageArtist {
+                renamed.channelName = pageArtist.name
+            }
+            MusicTrackLinks.note(track.id, artist: nil, album: album)
+            return renamed
+        }
+        return MusicAlbumPage(
+            title: album.title, subtitle: page.subtitle, artist: pageArtist,
+            thumbnailURL: page.thumbnailURL, playlistId: page.playlistId, tracks: tracks
+        )
     }
 
     /// In English, YouTube Music names a Japanese album track twice: the
