@@ -50,7 +50,10 @@ final class MusicPlayer: NSObject {
     /// Track, play state, queue or mode changed.
     static let didChangeNotification = Notification.Name("MusicPlayerDidChange")
 
-    let player = AVQueuePlayer()
+    /// The player of the song playing. Crossfading swaps it with `spare`,
+    /// which then fades the song before out; everything follows `player`.
+    private(set) var player = AVQueuePlayer()
+    private var spare = AVQueuePlayer()
     private(set) var current: Video?
     /// Added by the user ("Play next", "Add to queue"); plays first.
     private(set) var queue: [Video] = []
@@ -73,6 +76,8 @@ final class MusicPlayer: NSObject {
     private var token = CancellationToken()
     private var resourceLoader: AVAssetResourceLoaderDelegate?
     private var timeObserver: Any?
+    /// The player `timeObserver` belongs to: removing it from another throws.
+    private weak var observed: AVQueuePlayer?
     private var rateObservation: NSKeyValueObservation?
     /// Tracks in a row that would not play; past a few, stop instead of
     /// skipping through the whole queue.
@@ -181,7 +186,6 @@ final class MusicPlayer: NSObject {
 
     override private init() {
         super.init()
-        player.actionAtItemEnd = .advance
         configureFacade()
         NotificationCenter.default.addObserver(
             forName: .OPSleepTimerDidFire, object: nil, queue: .main
@@ -194,6 +198,7 @@ final class MusicPlayer: NSObject {
             // Waiting for the song's end: the queue player must stop there
             // instead of moving on to the preloaded song.
             self?.player.actionAtItemEnd = OPSleepTimer.endOfSong ? .pause : .advance
+            self?.endCrossfade()
         }
         NotificationCenter.default.addObserver(
             forName: .OPMusicSettingsDidChange, object: nil, queue: .main
@@ -202,19 +207,7 @@ final class MusicPlayer: NSObject {
                 self.applyLevel(for: track)
             }
         }
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 1, preferredTimescale: 600),
-            queue: .main
-        ) { [weak self] time in
-            NowPlayingService.shared.updatePosition(CMTimeGetSeconds(time))
-            self?.saveSessionIfDue()
-            self?.prefetchIfDue()
-        }
-        rateObservation = player.observe(\.timeControlStatus) { [weak self] _, _ in
-            DispatchQueue.main.async {
-                self?.postChange()
-            }
-        }
+        observe(player)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(saveSession),
@@ -227,6 +220,29 @@ final class MusicPlayer: NSObject {
             name: .AVPlayerItemDidPlayToEndTime,
             object: nil
         )
+    }
+
+    /// Time, play state and end-of-song behaviour follow the playing player.
+    private func observe(_ player: AVQueuePlayer) {
+        if let timeObserver, let observed {
+            observed.removeTimeObserver(timeObserver)
+        }
+        observed = player
+        player.actionAtItemEnd = OPSleepTimer.endOfSong ? .pause : .advance
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 1, preferredTimescale: 600),
+            queue: .main
+        ) { [weak self] time in
+            NowPlayingService.shared.updatePosition(CMTimeGetSeconds(time))
+            self?.saveSessionIfDue()
+            self?.prefetchIfDue()
+            self?.scheduleCrossfadeIfDue()
+        }
+        rateObservation = player.observe(\.timeControlStatus) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.postChange()
+            }
+        }
     }
 
     /// The facade never reports to YouTube: the TV sign-in's history would
@@ -612,6 +628,7 @@ final class MusicPlayer: NSObject {
     func togglePlayPause() {
         // Play pressed while the sleep timer fades out, or before the song
         // it held back is ready: the user wins.
+        endCrossfade()
         if fadeTimer?.isValid == true {
             fadeTimer?.invalidate()
             if let current {
@@ -635,12 +652,14 @@ final class MusicPlayer: NSObject {
     }
 
     func next() {
+        endCrossfade()
         advance(userInitiated: true)
     }
 
     /// Restarts the track when it is past its first seconds, like every
     /// music player; otherwise goes back to the one before.
     func previous() {
+        endCrossfade()
         guard currentTime <= 3, let previous = history.popLast(), let playing = current else {
             seek(to: 0)
             return
@@ -656,12 +675,14 @@ final class MusicPlayer: NSObject {
     }
 
     func seek(to seconds: TimeInterval) {
+        endCrossfade()
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600))
         NowPlayingService.shared.updatePosition(seconds)
     }
 
     func stop() {
         AudioOnlyMode.soundOnly = false
+        endCrossfade()
         fadeTimer?.invalidate()
         holdNextStart = false
         reporter.stop()
@@ -855,6 +876,7 @@ final class MusicPlayer: NSObject {
     }
 
     private func beginLoad(startAt: TimeInterval) {
+        endCrossfade()
         guard var track = current else {
             return
         }
@@ -895,14 +917,20 @@ final class MusicPlayer: NSObject {
 
     /// Takes over a preloaded track: its facade becomes the player's own,
     /// so recovery and watch time follow the track that plays.
-    private func adopt(_ ready: Prefetcher.Ready) {
+    private func adopt(_ ready: Prefetcher.Ready, fadingOut outgoing: AVQueuePlayer? = nil, over seconds: TimeInterval = 0) {
         guard let track = current else {
             return
         }
-        AppLog.player("music: playing preloaded \(track.id)")
-        token.cancel()
+        AppLog.player("music: playing preloaded \(track.id)" + (outgoing == nil ? "" : ", crossfading \(Int(seconds)) s"))
+        if let outgoing {
+            // The song before keeps its stream until it has faded out.
+            beginFade(from: outgoing, to: track, over: seconds)
+        } else {
+            endCrossfade()
+            token.cancel()
+            facade.reset()
+        }
         token = ready.token
-        facade.reset()
         facade = ready.facade
         configureFacade()
         resourceLoader = ready.resourceLoader
@@ -914,7 +942,9 @@ final class MusicPlayer: NSObject {
             player.removeAllItems()
             player.insert(ready.item, after: nil)
         }
-        applyLevel(for: track)
+        if outgoing == nil {
+            applyLevel(for: track)
+        }
         if holdNextStart {
             holdNextStart = false
             player.pause()
@@ -934,6 +964,7 @@ final class MusicPlayer: NSObject {
     /// pauses. Ending with a song, it is paused already.
     private func sleep() {
         AppLog.player("music: sleep timer, pausing")
+        endCrossfade()
         fadeTimer?.invalidate()
         guard player.rate > 0 else {
             postChange()
@@ -965,6 +996,125 @@ final class MusicPlayer: NSObject {
     private var fadeTimer: Timer?
     /// The song after the one the sleep timer waited for: loaded, not played.
     private var holdNextStart = false
+
+    // MARK: - Crossfade
+
+    /// The song fading out under the next one: its player and the stream
+    /// behind it, released when the fade ends.
+    private struct Fade {
+        let player: AVQueuePlayer
+        let facade: PlaybackFacade
+        let token: CancellationToken
+        let resourceLoader: AVAssetResourceLoaderDelegate?
+        let timer: Timer
+    }
+
+    private var fade: Fade?
+    private weak var crossfadeScheduledFor: AVPlayerItem?
+
+    /// Within a second or so of the fade point: starts it on time (the
+    /// periodic observer only ticks every second).
+    private func scheduleCrossfadeIfDue() {
+        let seconds = OPMusicSettings.crossfadeSeconds
+        guard seconds > 0, fade == nil, let item = playingItem, item === player.currentItem,
+              crossfadeScheduledFor !== item, duration > 0
+        else {
+            return
+        }
+        let remaining = duration - currentTime
+        guard remaining > seconds, remaining - seconds < 1.5 else {
+            return
+        }
+        crossfadeScheduledFor = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + remaining - seconds) { [weak self] in
+            guard let self, self.playingItem === item else {
+                return
+            }
+            self.startCrossfade(over: seconds)
+        }
+    }
+
+    /// The preloaded song starts on the spare player and fades in while this
+    /// one fades out; then the two swap. Albums stay gapless (live albums,
+    /// songs that run into each other), and so does anything not ready.
+    private func startCrossfade(over seconds: TimeInterval) {
+        let remaining = duration - currentTime
+        // Seeked since it was scheduled: try again at the new fade point.
+        guard abs(remaining - seconds) < 0.75 else {
+            crossfadeScheduledFor = nil
+            return
+        }
+        let album = collectionId.map { $0.hasPrefix("MPREb") || $0.hasPrefix("OLAK5uy") } ?? false
+        guard player.rate > 0, !isLoading, repeatMode != .one, !OPSleepTimer.endOfSong, !holdNextStart,
+              !(album && queue.isEmpty),
+              let expected = nextTrack, prefetcher.isReady(for: expected)
+        else {
+            return
+        }
+        guard step(), let ready = prefetcher.take(for: current, expected: expected) else {
+            load()
+            return
+        }
+        let outgoing = player
+        // It waited behind the song fading out; an item cannot move to
+        // another player, so the spare one gets its own on the same asset.
+        outgoing.remove(ready.item)
+        let item = AVPlayerItem(asset: ready.item.asset)
+        PlaybackBufferPolicy.configure(item: item)
+        item.preferredForwardBufferDuration = Self.bufferSeconds
+        let incoming = spare
+        incoming.removeAllItems()
+        incoming.volume = 0
+        incoming.insert(item, after: nil)
+        spare = outgoing
+        player = incoming
+        observe(incoming)
+        adopt(
+            Prefetcher.Ready(
+                track: ready.track, item: item, resourceLoader: ready.resourceLoader,
+                duration: ready.duration, facade: ready.facade, token: ready.token
+            ),
+            fadingOut: outgoing,
+            over: seconds
+        )
+    }
+
+    /// Equal-power curves, so the sum does not dip in the middle.
+    private func beginFade(from outgoing: AVQueuePlayer, to track: Video, over seconds: TimeInterval) {
+        let from = outgoing.volume
+        let target = OPMusicSettings.levelVolume ? PlayerLoudness.volume(for: track.id) : 1
+        let steps = max(Int(seconds * 20), 1)
+        var step = 0
+        let timer = Timer(timeInterval: seconds / Double(steps), repeats: true) { [weak self] _ in
+            step += 1
+            let progress = min(Double(step) / Double(steps), 1)
+            outgoing.volume = from * Float(cos(progress * .pi / 2))
+            self?.player.volume = target * Float(sin(progress * .pi / 2))
+            if step >= steps {
+                self?.endCrossfade()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        fade = Fade(player: outgoing, facade: facade, token: token, resourceLoader: resourceLoader, timer: timer)
+    }
+
+    /// Finishes a running fade at once: the song before stops, the new one
+    /// is at its level. Anything the user does during a fade ends it first.
+    private func endCrossfade() {
+        guard let fade else {
+            return
+        }
+        self.fade = nil
+        fade.timer.invalidate()
+        fade.player.pause()
+        fade.player.removeAllItems()
+        fade.player.volume = 1
+        fade.token.cancel()
+        fade.facade.reset()
+        if let current {
+            applyLevel(for: current)
+        }
+    }
 
     /// Louder songs turned down to YouTube's target (setting "Same volume
     /// for every song"); on both start paths, the preloaded one included.
@@ -1238,6 +1388,10 @@ private final class Prefetcher: PlaybackContext {
         AppLog.player("music: preloading next \(track.id)")
         WatchProgressStore.shared.setLinkStart(seconds: 0, forVideoId: track.id)
         facade.start(videoId: track.id, apiClient: ServiceContainer.watch, cancellationToken: token)
+    }
+
+    func isReady(for track: Video) -> Bool {
+        ready?.track.id == track.id
     }
 
     /// The preloaded track, if it is the one now playing.

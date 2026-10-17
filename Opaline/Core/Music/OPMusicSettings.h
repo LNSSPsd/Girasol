@@ -31,6 +31,10 @@ FOUNDATION_EXPORT NSNotificationName const OPMusicSettingsDidChangeNotification;
 /// Songs louder than YouTube's loudness target are turned down to it, as
 /// YouTube's own players do (see `PlayerLoudness`). Default YES.
 @property (class, nonatomic) BOOL levelVolume;
+/// Songs fade into each other over this many seconds; 0 is off (gapless).
+/// Albums always play gapless. Default 0.
+@property (class, nonatomic) NSTimeInterval crossfadeSeconds;
+@property (class, nonatomic, readonly) NSArray<NSNumber *> *crossfadeChoices;
 /// The choices offered for `cacheSeconds`.
 @property (class, nonatomic, readonly) NSArray<NSNumber *> *cacheChoices;
 + (NSString *)titleForCacheSeconds:(NSTimeInterval)seconds;

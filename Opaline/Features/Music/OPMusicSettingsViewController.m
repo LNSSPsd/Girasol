@@ -8,6 +8,7 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	OPSectionSongs,
 	OPSectionTitles,
 	OPSectionLevel,
+	OPSectionCrossfade,
 	OPSectionCache,
 	OPSectionAmount,
 	OPSectionAccount,
@@ -67,6 +68,8 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		return 1;
 	case OPSectionAmount:
 		return OPMusicSettings.cacheNext ? (NSInteger)OPMusicSettings.cacheChoices.count : 0;
+	case OPSectionCrossfade:
+		return (NSInteger)OPMusicSettings.crossfadeChoices.count;
 	default:
 		return 1;
 	}
@@ -75,6 +78,8 @@ typedef NS_ENUM(NSInteger, OPSection) {
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
 	if (section == OPSectionAmount && OPMusicSettings.cacheNext)
 		return @"How much to buffer ahead";
+	if (section == OPSectionCrossfade)
+		return @"Crossfade";
 	if (section == OPSectionAfter)
 		return @"After an album or playlist";
 	return nil;
@@ -93,6 +98,9 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	if (section == OPSectionLevel)
 		return @"Songs mastered louder than YouTube's loudness target are turned down to it, as YouTube's own "
 		       @"players do, so one song does not blast after a quiet one.";
+	if (section == OPSectionCrossfade)
+		return @"Each song fades into the next. Albums always play gapless, as they were made; it needs "
+		       @"\"Cache the next song\" on.";
 	if (section == OPSectionCache)
 		return @"Loads the next song before the current one ends, so a tunnel or a dead zone does not stop the "
 		       @"music.";
@@ -175,6 +183,13 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		    seconds == OPMusicSettings.cacheSeconds ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
 		break;
 	}
+	case OPSectionCrossfade: {
+		NSTimeInterval seconds = OPMusicSettings.crossfadeChoices[indexPath.row].doubleValue;
+		cell.textLabel.text = seconds > 0 ? [NSString stringWithFormat:@"%.0f seconds", seconds] : @"Off";
+		cell.accessoryType = seconds == OPMusicSettings.crossfadeSeconds ? UITableViewCellAccessoryCheckmark
+		                                                                  : UITableViewCellAccessoryNone;
+		break;
+	}
 	case OPSectionAfter: {
 		cell.textLabel.text = @"YouTube Music's recommendations";
 		cell.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -238,6 +253,10 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	if (indexPath.section == OPSectionAmount) {
 		OPMusicSettings.cacheSeconds = OPMusicSettings.cacheChoices[indexPath.row].doubleValue;
 		[tableView reloadSections:[NSIndexSet indexSetWithIndex:OPSectionAmount]
+		         withRowAnimation:UITableViewRowAnimationNone];
+	} else if (indexPath.section == OPSectionCrossfade) {
+		OPMusicSettings.crossfadeSeconds = OPMusicSettings.crossfadeChoices[indexPath.row].doubleValue;
+		[tableView reloadSections:[NSIndexSet indexSetWithIndex:OPSectionCrossfade]
 		         withRowAnimation:UITableViewRowAnimationNone];
 	} else if (indexPath.section == OPSectionAccount) {
 		[self accountTapped];

@@ -7,6 +7,7 @@ static NSString *const OPAccountRecommendationsKey = @"music_accountRecommendati
 static NSString *const OPSongVersionsKey = @"music_songVersions";
 static NSString *const OPOriginalTitlesKey = @"music_originalTitles";
 static NSString *const OPLevelVolumeKey = @"music_levelVolume";
+static NSString *const OPCrossfadeKey = @"music_crossfadeSeconds";
 
 NSNotificationName const OPMusicSettingsDidChangeNotification = @"OPMusicSettingsDidChangeNotification";
 
@@ -72,6 +73,18 @@ NSNotificationName const OPMusicSettingsDidChangeNotification = @"OPMusicSetting
 + (void)setLevelVolume:(BOOL)levelVolume {
 	[NSUserDefaults.standardUserDefaults setBool:levelVolume forKey:OPLevelVolumeKey];
 	[NSNotificationCenter.defaultCenter postNotificationName:OPMusicSettingsDidChangeNotification object:nil];
+}
+
++ (NSTimeInterval)crossfadeSeconds {
+	return [NSUserDefaults.standardUserDefaults doubleForKey:OPCrossfadeKey];
+}
+
++ (void)setCrossfadeSeconds:(NSTimeInterval)crossfadeSeconds {
+	[NSUserDefaults.standardUserDefaults setDouble:crossfadeSeconds forKey:OPCrossfadeKey];
+}
+
++ (NSArray<NSNumber *> *)crossfadeChoices {
+	return @[ @0, @3, @6, @9, @12 ];
 }
 
 + (NSArray<NSNumber *> *)cacheChoices {
