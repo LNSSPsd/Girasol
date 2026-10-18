@@ -120,7 +120,7 @@ enum MusicPlaylistEditor {
         MusicTrackMenu.present(sheet, from: presenter, anchor: anchor)
     }
 
-    private static func choosePrivacy(
+    static func choosePrivacy(
         title: String,
         from presenter: UIViewController,
         anchor: UIView?,

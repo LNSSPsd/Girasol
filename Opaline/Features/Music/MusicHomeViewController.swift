@@ -166,6 +166,10 @@ final class MusicHomeViewController: MusicListViewController {
             MusicNavigator.openAlbum(album, from: self)
         case .artist(let artist):
             MusicNavigator.openArtist(artist, from: self)
+        case .playlist(let playlist) where playlist.id.hasPrefix(MusicSpotifyViewController.collectionPrefix):
+            // Speed dial: a Spotify playlist played earlier.
+            let spotify = String(playlist.id.dropFirst(MusicSpotifyViewController.collectionPrefix.count))
+            navigationController?.pushViewController(MusicSpotifyViewController(playlistId: spotify), animated: true)
         case .playlist(let playlist):
             navigationController?.pushViewController(
                 MusicCollectionViewController(collection: playlist), animated: true

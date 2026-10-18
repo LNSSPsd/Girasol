@@ -103,9 +103,32 @@ checkMix("ytlite://playlist?list=RDtB9TKsU22wU", expect: "tB9TKsU22wU")
 checkMix("https://youtube.com/playlist?list=RDMMdQw4w9WgXcQ", expect: nil)
 checkMix("https://youtube.com/playlist?list=PL2VOasSfo6Yu", expect: nil)
 
+func checkSpotify(_ urlString: String, expect: String?, line: UInt = #line) {
+    let url = URL(string: urlString)
+    let got = url.flatMap { YouTubeLinkParser.spotifyPlaylistId(from: $0) }
+    assert(
+        got == expect,
+        "line \(line): \(urlString) -> got \(got ?? "nil"), expected \(expect ?? "nil")"
+    )
+}
+
+// Spotify playlists open in music mode
+checkSpotify(
+    "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=0123456789abcdefABCDEF&utm_source=native-share-menu",
+    expect: "37i9dQZF1DXcBWIGoYBM5M"
+)
+checkSpotify("https://open.spotify.com/intl-ja/playlist/37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
+checkSpotify("spotify:playlist:37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
+checkSpotify("ytlite://spotify?playlist=37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
+checkSpotify("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", expect: nil)
+checkSpotify("https://youtube.com/playlist?list=PL123", expect: nil)
+checkSpotify("ytlite://playlist?list=PL123", expect: nil)
+assert(URL(string: "ytlite://spotify?playlist=37i9dQZF1DX0XUsuxWHRQd").flatMap(YouTubeLinkParser.videoId) == nil)
+
 // The one rule both the extension and the deep-link handler ask
 assert(URL(string: "https://youtube.com/playlist?list=PL123").map(YouTubeLinkParser.handles) == true)
 assert(URL(string: "https://youtu.be/dQw4w9WgXcQ").map(YouTubeLinkParser.handles) == true)
 assert(URL(string: "https://youtube.com/feed/trending").map(YouTubeLinkParser.handles) == false)
+assert(URL(string: "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M").map(YouTubeLinkParser.handles) == true)
 
 print("YouTubeLinkParser: all checks passed")

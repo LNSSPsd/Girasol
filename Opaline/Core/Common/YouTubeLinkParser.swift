@@ -47,7 +47,33 @@ enum YouTubeLinkParser {
     /// Whether this link is one the app can open at all. One rule, because
     /// the share extension and the deep-link handler have to agree on it.
     static func handles(_ url: URL) -> Bool {
-        videoId(from: url) != nil || playlistId(from: url) != nil
+        videoId(from: url) != nil || playlistId(from: url) != nil || spotifyPlaylistId(from: url) != nil
+    }
+
+    /// A shared Spotify playlist — `open.spotify.com/playlist/ID` (an
+    /// `intl-xx/` prefix too), `spotify:playlist:ID`, or the
+    /// `ytlite://spotify?playlist=ID` the share extension turns them into —
+    /// which music mode opens to play or import.
+    static func spotifyPlaylistId(from url: URL) -> String? {
+        let scheme = url.scheme?.lowercased()
+        let id: String?
+        if scheme == "ytlite" {
+            id = url.host?.lowercased() == "spotify" ? queryValue(url, name: "playlist") : nil
+        } else if scheme == "spotify" {
+            let parts = url.absoluteString.split(separator: ":").map(String.init)
+            id = parts.count == 3 && parts[1] == "playlist" ? parts[2] : nil
+        } else if let host = url.host?.lowercased(), host == "open.spotify.com" || host == "play.spotify.com" {
+            let components = pathComponents(url)
+            id = components.firstIndex(of: "playlist").flatMap {
+                components.indices.contains($0 + 1) ? components[$0 + 1] : nil
+            }
+        } else {
+            id = nil
+        }
+        guard let id, !id.isEmpty, id.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else {
+            return nil
+        }
+        return id
     }
 
     /// The playlist a link points at — the `list` of a `/playlist` page, or

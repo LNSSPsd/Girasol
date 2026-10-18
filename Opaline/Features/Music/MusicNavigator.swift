@@ -11,6 +11,28 @@ enum MusicNavigator {
         push(MusicCollectionViewController(album: album), from: presenter)
     }
 
+    /// A shared Spotify playlist, from a link: in music mode (switched to
+    /// when the app is in video mode), on the tab showing.
+    static func openSpotifyPlaylist(_ playlistId: String) {
+        if !MusicMode.isEnabled {
+            MusicMode.setEnabled(true)
+        }
+        let root = (UIApplication.shared.delegate as? AppDelegate)?.window?.rootViewController
+        guard let tabs = root as? MusicTabBarController,
+              let nav = tabs.selectedViewController as? UINavigationController
+        else {
+            return
+        }
+        let page = MusicSpotifyViewController(playlistId: playlistId)
+        if tabs.presentedViewController != nil {
+            tabs.dismiss(animated: true) {
+                nav.pushViewController(page, animated: true)
+            }
+        } else {
+            nav.pushViewController(page, animated: true)
+        }
+    }
+
     /// Resolves a song's artist or album (known links first, else its radio
     /// entry), then opens it.
     static func open(_ target: Target, of track: Video, from presenter: UIViewController) {

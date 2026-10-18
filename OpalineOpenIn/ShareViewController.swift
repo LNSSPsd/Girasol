@@ -21,7 +21,8 @@ private protocol URLOpening {
     )
 }
 
-/// Share-sheet entry: rewrites the shared youtube.com link to `ytlite://`
+/// Share-sheet entry: rewrites the shared youtube.com (or Spotify playlist)
+/// link to `ytlite://`
 /// and hands it to Opaline. No UI — it opens the app and dismisses itself.
 final class ShareViewController: UIViewController {
     private var didFinish = false
@@ -56,6 +57,9 @@ final class ShareViewController: UIViewController {
     /// `?t=` and the shorts shape are carried over, so the app starts where
     /// the link points and in the right player.
     private func deepLink(for url: URL) -> URL? {
+        if let spotify = YouTubeLinkParser.spotifyPlaylistId(from: url) {
+            return URL(string: "ytlite://spotify?playlist=\(spotify)")
+        }
         let list = YouTubeLinkParser.playlistId(from: url)
         guard let videoId = YouTubeLinkParser.videoId(from: url) else {
             return list.flatMap { URL(string: "ytlite://playlist?list=\($0)") }
@@ -173,7 +177,7 @@ final class ShareViewController: UIViewController {
     }
 }
 
-/// Pulls the first YouTube link out of a shared plain-text item; passes a
+/// Pulls the first YouTube or Spotify playlist link out of a shared plain-text item; passes a
 /// shared URL through untouched.
 private func url(from item: NSSecureCoding?) -> URL? {
     if let url = item as? URL {

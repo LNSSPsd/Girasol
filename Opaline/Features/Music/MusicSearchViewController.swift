@@ -14,7 +14,7 @@ final class MusicSearchViewController: MusicListViewController, UISearchBarDeleg
         title = "Search"
         installRootBarItems()
         let theme = ThemeManager.shared
-        searchBar.placeholder = "Songs, albums, artists"
+        searchBar.placeholder = "Songs, albums, artists, Spotify links"
         searchBar.delegate = self
         searchBar.searchBarStyle = .minimal
         searchBar.tintColor = theme.accent
@@ -97,6 +97,12 @@ final class MusicSearchViewController: MusicListViewController, UISearchBarDeleg
     private func run() {
         let query = (searchBar.text ?? "").trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else {
+            return
+        }
+        // A pasted Spotify playlist link opens the playlist.
+        if let url = URL(string: query), let spotify = YouTubeLinkParser.spotifyPlaylistId(from: url) {
+            searchBar.resignFirstResponder()
+            navigationController?.pushViewController(MusicSpotifyViewController(playlistId: spotify), animated: true)
             return
         }
         lastQuery = query

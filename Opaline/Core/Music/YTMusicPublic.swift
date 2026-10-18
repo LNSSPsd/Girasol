@@ -196,6 +196,58 @@ enum YTMusicPublic {
         }
     }
 
+    /// One song of a song search, as matching another service's track needs
+    /// it: the title as YouTube Music wrote it, every credited artist, the
+    /// length.
+    struct SongCandidate {
+        let video: Video
+        let title: String
+        let artists: [String]
+        let seconds: Int?
+    }
+
+    /// The song search in `hl`'s names: asked in Japanese, a Japanese
+    /// artist is written in Japanese, not romanized. Nothing is renamed here
+    /// (`search` does that for display). Main queue.
+    static func songCandidates(
+        _ query: String,
+        hl: String,
+        completion: @escaping ([SongCandidate]) -> Void
+    ) {
+        let body: [String: Any] = ["query": query, "params": searchFilters[0].params]
+        post("search", body, tag: "search(\(hl))", hl: hl) { json in
+            let candidates = json.map { listItems(in: $0) }?.compactMap { item -> SongCandidate? in
+                guard case .song(let video) = entry(item) else {
+                    return nil
+                }
+                let columns = (item["flexColumns"] as? [[String: Any]] ?? []).map {
+                    runs(($0["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any])?["text"])
+                }
+                let byline = columns.dropFirst().first ?? []
+                var artists = byline.compactMap { run -> String? in
+                    let type = pageType(run["navigationEndpoint"] as? [String: Any])
+                    return type == "MUSIC_PAGE_TYPE_ARTIST" || type == "MUSIC_PAGE_TYPE_USER_CHANNEL"
+                        ? run["text"] as? String : nil
+                }
+                if artists.isEmpty, let first = byline.first?["text"] as? String {
+                    // An artist without a page of their own is plain text.
+                    artists = [first]
+                }
+                let seconds = video.duration.flatMap { length -> Int? in
+                    let parts = length.split(separator: ":").compactMap { Int($0) }
+                    return parts.isEmpty ? nil : parts.reduce(0) { $0 * 60 + $1 }
+                }
+                return SongCandidate(
+                    video: video,
+                    title: texts(["runs": columns.first ?? []]),
+                    artists: artists,
+                    seconds: seconds
+                )
+            } ?? []
+            DispatchQueue.main.async { completion(candidates) }
+        }
+    }
+
     static func artist(
         _ browseId: String,
         completion: @escaping (MusicArtistPage?) -> Void

@@ -13,7 +13,15 @@ extension AppDelegate {
         guard YouTubeLinkParser.handles(url) else {
             return false
         }
-        guard window?.rootViewController is RootContainerViewController else {
+        // Music mode's root is its own tab bar; a Spotify playlist opens
+        // there from either mode.
+        let root = window?.rootViewController
+        if let spotify = YouTubeLinkParser.spotifyPlaylistId(from: url),
+           root is RootContainerViewController || root is MusicTabBarController {
+            MusicNavigator.openSpotifyPlaylist(spotify)
+            return true
+        }
+        guard root is RootContainerViewController else {
             // Splash/auth still up — replay once showMain() runs.
             pendingDeepLink = url
             return true
@@ -31,6 +39,10 @@ extension AppDelegate {
     }
 
     private func openVideo(from url: URL) {
+        if let spotify = YouTubeLinkParser.spotifyPlaylistId(from: url) {
+            MusicNavigator.openSpotifyPlaylist(spotify)
+            return
+        }
         let playlistId = YouTubeLinkParser.playlistId(from: url)
         let videoOrMixSeed = YouTubeLinkParser.videoId(from: url)
             ?? YouTubeLinkParser.mixSeedVideoId(from: url)
