@@ -24,6 +24,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         AppLog.banner()
         OPMusicWebAccount.logger = { AppLog.innertube($0) }
+        MusicSpotifyClipboard.start()
         configureServices(application)
         // The player has to know how the phone is held the moment it opens —
         // too late to start asking then.
