@@ -88,6 +88,7 @@ enum AppURLs {
 
     /// Settings → Credits.
     enum Credits {
+        static let girasol = "https://github.com/LNSSPsd/Girasol"
         static let opaline = "https://github.com/verback2308/Opaline"
     }
 

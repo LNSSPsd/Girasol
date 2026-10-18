@@ -16,6 +16,7 @@ extension SettingsViewController {
         .language: "settings.section.language",
         .playback: "settings.section.playback",
         .credits: "Credits",
+        .creditsGirasol: "Girasol",
         .creditsOpaline: "Opaline",
         .sponsorBlock: "settings.section.sponsorblock",
         .cache: "settings.section.cache",
@@ -28,6 +29,7 @@ extension SettingsViewController {
         .pageLanguage: .language,
         .pagePlayback: .playback,
         .pageCredits: .credits,
+        .pageCreditsGirasol: .creditsGirasol,
         .pageCreditsOpaline: .creditsOpaline,
         .pageSponsorBlock: .sponsorBlock,
         .pageCache: .cache,
@@ -49,6 +51,8 @@ extension SettingsViewController {
             return playbackSections
         case .credits:
             return creditsSections
+        case .creditsGirasol:
+            return creditsGirasolSections
         case .creditsOpaline:
             return creditsOpalineSections
         case .sponsorBlock:
@@ -158,9 +162,26 @@ extension SettingsViewController {
         ]
     }
 
-    /// The projects this fork is built on, each with its own page.
+    /// This app, then the projects it is built on, each with its own page.
     private var creditsSections: [Section] {
-        [Section(header: nil, footer: "Girasol is built on the projects above.", rows: [.pageCreditsOpaline])]
+        [
+            Section(header: nil, footer: nil, rows: [.pageCreditsGirasol]),
+            Section(header: "Built on", footer: nil, rows: [.pageCreditsOpaline])
+        ]
+    }
+
+    /// Where this app's source is, and on what terms: GPLv3 as a whole, its
+    /// own changes also in the public domain (README, LICENSES/CC0-1.0.txt).
+    private var creditsGirasolSections: [Section] {
+        [
+            Section(
+                header: nil,
+                footer: "Girasol is free software under the GNU General Public License v3, like Opaline. "
+                    + "Its own changes to Opaline are also dedicated to the public domain (CC0 1.0): "
+                    + "they may be used in any way, without conditions. Opaline's code stays under the GPL v3.",
+                rows: [.creditsGirasolRepo]
+            )
+        ]
     }
 
     /// The original app and its author: where to find it, and supporting

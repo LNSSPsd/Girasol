@@ -5,7 +5,7 @@ import UIKit
 /// every page — `page` picks which sections to build (see +Pages).
 final class SettingsViewController: UIViewController {
     enum Row {
-        case pageAppearance, pageLanguage, pagePlayback, pageCredits, pageCreditsOpaline
+        case pageAppearance, pageLanguage, pagePlayback, pageCredits, pageCreditsGirasol, pageCreditsOpaline
         case pageSponsorBlock, pageCache, pageDebug, pageDownloads
         case theme, autoDarkStart, autoDarkEnd, appIcon
         case region
@@ -25,11 +25,11 @@ final class SettingsViewController: UIViewController {
         case mainThreadWatchdog
         case shareLog
         case importOpaline
-        case creditsOpalineRepo, support
+        case creditsGirasolRepo, creditsOpalineRepo, support
         case aboutVersion, aboutSystem, aboutModel
     }
     enum Page {
-        case root, appearance, language, playback, credits, creditsOpaline
+        case root, appearance, language, playback, credits, creditsGirasol, creditsOpaline
         case sponsorBlock, cache, debug, downloads
     }
     struct Section {
@@ -189,7 +189,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             return pageCell
         }
         switch row {
-        case .pageAppearance, .pageLanguage, .pagePlayback, .pageCredits, .pageCreditsOpaline,
+        case .pageAppearance, .pageLanguage, .pagePlayback, .pageCredits, .pageCreditsGirasol, .pageCreditsOpaline,
              .pageSponsorBlock, .pageCache, .pageDebug, .pageDownloads:
             return UITableViewCell()  // unreachable: makePageCell handles these
         case .theme:
@@ -344,7 +344,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             return makeDisclosureCell("settings.row.shareLog".localized)
         case .importOpaline:
             return makeDisclosureCell("Import from Opaline")
-        case .creditsOpalineRepo:
+        case .creditsGirasolRepo, .creditsOpalineRepo:
             return makeDisclosureCell("Source code on GitHub")
         case .support:
             return makeDisclosureCell("settings.row.support".localized)
@@ -436,6 +436,10 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             shareDebugLog()
         case .importOpaline:
             OpalineImportPrompt.start(from: self)
+        case .creditsGirasolRepo:
+            if let url = URL(string: AppURLs.Credits.girasol) {
+                UIApplication.shared.open(url)
+            }
         case .creditsOpalineRepo:
             if let url = URL(string: AppURLs.Credits.opaline) {
                 UIApplication.shared.open(url)
