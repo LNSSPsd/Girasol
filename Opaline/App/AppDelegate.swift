@@ -97,15 +97,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         resolveDeferredAuthIfNeeded()
     }
 
-    /// Legacy background fetch is kept as the single code path across iOS
-    /// 12…latest instead of BGTaskScheduler; deprecated on iOS 13+.
-    @available(iOS, deprecated: 13.0, message: "Single code path for iOS 12+.")
-    private func configureLegacyBackgroundFetch(_ application: UIApplication) {
-        application.setMinimumBackgroundFetchInterval(
-            UIApplication.backgroundFetchIntervalMinimum
-        )
-    }
-
     /// The keychain is readable again now, so a "signed out" verdict reached
     /// in the background can be re-checked before it costs the user a
     /// pointless sign-in.
@@ -129,7 +120,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         ThemeManager.shared.applyGlobal()
         BackgroundPlaybackService.apply()
         application.beginReceivingRemoteControlEvents()
-        configureLegacyBackgroundFetch(application)
         if UserDefaults.standard.bool(forKey: UserDefaultsKeys.Debug.mainThreadWatchdog) {
             startMainThreadWatchdog()
         }
