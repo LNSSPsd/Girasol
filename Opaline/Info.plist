@@ -104,8 +104,6 @@
 		<string>zh-Hans</string>
 		<string>zh-Hant</string>
 	</array>
-	<key>AppManifestURL</key>
-	<string>$(APP_MANIFEST_URL)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

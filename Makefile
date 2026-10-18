@@ -44,7 +44,6 @@ MIN_OS         ?= 14.0
 BUNDLE_ID      ?= com.verback.YTLite
 VERSION        ?= 1.12.0
 BUILD_NUMBER   ?= 1
-APP_MANIFEST_URL ?= https://raw.githubusercontent.com/verback2308/ytlite/main/source/apps.json
 TEAM_ID        := 4RAT6786W6
 # Compiler threads, and parallel Objective-C compiles.
 JOBS           ?= 16
@@ -151,8 +150,7 @@ ipa: $(OUT)/Opaline $(OUT)/app.entitlements
 		cp $$I/Icon-$$s@2x.png $(APP)/AppIcon$${s}x$$s@2x~ipad.png; done; \
 	cp $$I/Icon-83.5@2x.png $(APP)/AppIcon83.5x83.5@2x~ipad.png
 	$(PLIST) --source Opaline/Info.plist --output $(APP)/Info.plist \
-		--executable Opaline --bundle-id $(BUNDLE_ID) \
-		--var APP_MANIFEST_URL=$(APP_MANIFEST_URL)
+		--executable Opaline --bundle-id $(BUNDLE_ID)
 	printf 'APPL????' > $(APP)/PkgInfo
 	# Binaries and signatures; iOS 14 has the Swift runtime built in.
 	cp $(OUT)/Opaline $(APP)/Opaline

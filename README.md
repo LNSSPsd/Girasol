@@ -2,11 +2,6 @@
 
 # Opaline
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="source/logo-dark.png">
-  <img src="source/logo.png" width="128" alt="">
-</picture>
-
 **A lightweight, native YouTube client for iOS 12+. No ads, no tracking, no dependencies.**
 
 [![Latest release](https://img.shields.io/github/v/release/verback2308/Opaline?label=release&color=blue)](https://github.com/verback2308/Opaline/releases/latest)
@@ -17,31 +12,6 @@
 </div>
 
 <sub>Opaline was released as YTLite until August. It was renamed to avoid confusion with an unrelated tweak of the same name and is not related to it.</sub>
-
-<div align="center">
-
-<br>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/iphone/dark/recommendations.jpeg">
-  <img src="screenshots/app/iphone/light/recommendations.jpeg" width="24%" alt="Home feed">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/iphone/dark/player.jpeg">
-  <img src="screenshots/app/iphone/light/player.jpeg" width="24%" alt="Video player with comments">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/iphone/dark/channel.jpeg">
-  <img src="screenshots/app/iphone/light/channel.jpeg" width="24%" alt="Channel page">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/iphone/dark/subscriptions.jpeg">
-  <img src="screenshots/app/iphone/light/subscriptions.jpeg" width="24%" alt="Subscriptions feed">
-</picture>
-
-<sub>Screenshots follow your GitHub theme — the app supports both light and dark mode.</sub>
-
-</div>
 
 ## Why
 
@@ -71,44 +41,6 @@ When Google dropped support for the official YouTube app on older devices, there
 - **Auto theme** — follows system dark mode on iOS 13+, scheduled hours on iOS 12; manual override available
 - **Made for old hardware** — thumbnails and channel details are fetched and decoded a few at a time rather than all at once, which is what keeps scrolling smooth on a dual-core A7
 - **Your layout** — pick the tab the app opens on, force the icon light or dark, and browse settings as a nested menu instead of one long list
-
-<div align="center">
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/ipad/dark/player.jpeg">
-  <img src="screenshots/app/ipad/light/player.jpeg" width="90%" alt="iPad player with related videos side by side">
-</picture>
-
-<sub>Native iPad layout — player and related videos side by side.</sub>
-
-</div>
-
-<details>
-<summary><b>More screenshots</b></summary>
-<br>
-<div align="center">
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/iphone/dark/settings.jpeg">
-  <img src="screenshots/app/iphone/light/settings.jpeg" width="32%" alt="Settings">
-</picture>
-<img src="screenshots/app/iphone/light/shorts.jpeg" width="32%" alt="Shorts viewer">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/ipad/dark/recommendations.jpeg">
-  <img src="screenshots/app/ipad/light/recommendations.jpeg" width="63%" alt="iPad home feed">
-</picture>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/ipad/dark/channel.jpeg">
-  <img src="screenshots/app/ipad/light/channel.jpeg" width="48%" alt="iPad channel page">
-</picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="screenshots/app/ipad/dark/subscriptions.jpeg">
-  <img src="screenshots/app/ipad/light/subscriptions.jpeg" width="48%" alt="iPad subscriptions feed">
-</picture>
-
-</div>
-</details>
 
 ## Installation
 
