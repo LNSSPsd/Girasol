@@ -130,10 +130,12 @@ enum MusicSpotifyMatcher {
             .trimmingCharacters(in: .whitespaces)
     }
 
-    /// Case and width folded, punctuation as spaces. Not diacritics: they
-    /// would make ジ and シ the same letter.
+    /// Case and width folded, apostrophes dropped (YouTube Music writes
+    /// "It's" as "Its" too), other punctuation as spaces. Not diacritics:
+    /// they would make ジ and シ the same letter.
     private static func normalized(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .widthInsensitive], locale: nil)
+            .replacingOccurrences(of: "['’ʼ`]", with: "", options: .regularExpression)
             .replacingOccurrences(of: "[^\\p{L}\\p{N}]+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespaces)
     }
