@@ -48,10 +48,9 @@ final class AuthViewController: UIViewController {
 
     /// Google picks the page language from the IP, not from
     /// `Accept-Language` — a Japanese user on a foreign network lands on a
-    /// page they cannot read. `hl` overrides that with the app's language.
+    /// page they cannot read. `hl` overrides that with the device's language.
     private func localized(_ url: URL) -> URL {
-        guard let code = AppLanguage.override?.rawValue
-            ?? Locale.preferredLanguages.first,
+        guard let code = Locale.preferredLanguages.first,
             var components = URLComponents(
                 url: url, resolvingAgainstBaseURL: false
             ) else {

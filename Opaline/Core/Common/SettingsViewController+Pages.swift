@@ -123,7 +123,7 @@ extension SettingsViewController {
             Section(
                 header: nil,
                 footer: "settings.footer.language".localized,
-                rows: [.appLanguage, .region]
+                rows: [.region]
             )
         ]
     }

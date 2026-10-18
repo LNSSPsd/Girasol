@@ -1,10 +1,9 @@
 import Foundation
 
-/// UI languages the app ships `.lproj` bundles for. Adding a language =
-/// adding its case + a translated `Localizable.strings`, worded from the
-/// official YouTube app's own `.lproj` for that language (see the
-/// Localization section in AGENTS.md). RTL languages are deferred until a
-/// leading/trailing constraint audit.
+/// Content languages: what YouTube is asked for titles, search and feeds in
+/// (`hl`, following the device's language) and what caption downloads
+/// offer. The interface itself is English only — this fork ships no
+/// translations.
 enum AppLanguage: String, CaseIterable {
     case english = "en"
     case russian = "ru"
@@ -20,29 +19,8 @@ enum AppLanguage: String, CaseIterable {
     case chineseSimplified = "zh-Hans"
     case chineseTraditional = "zh-Hant"
 
-    /// The user's in-app override, nil = follow the system language.
-    static var override: AppLanguage? {
-        get {
-            let stored = UserDefaults.standard.string(
-                forKey: UserDefaultsKeys.Localization.appLanguage
-            )
-            return stored.flatMap(AppLanguage.init(rawValue:))
-        }
-        set {
-            UserDefaults.standard.set(
-                newValue?.rawValue,
-                forKey: UserDefaultsKeys.Localization.appLanguage
-            )
-            LocalizationManager.shared.reload()
-        }
-    }
-
-    /// The effective UI language: the override, else the closest supported
-    /// match to the system language, else English.
+    /// The closest supported match to the device's language, else English.
     static var effective: AppLanguage {
-        if let override {
-            return override
-        }
         let preferred = Locale.preferredLanguages.first ?? "en"
         if let lang = AppLanguage(rawValue: preferred) {
             return lang
@@ -62,7 +40,7 @@ enum AppLanguage: String, CaseIterable {
 // MARK: - Display names
 
 extension AppLanguage {
-    /// Native-script name for the settings picker.
+    /// Native-script name, for the caption-language list.
     var displayName: String {
         switch self {
         case .english:

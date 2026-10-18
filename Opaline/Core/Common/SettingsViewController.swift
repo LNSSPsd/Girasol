@@ -8,7 +8,7 @@ final class SettingsViewController: UIViewController {
         case pageAppearance, pageLanguage, pagePlayback, pageCredits, pageCreditsOpaline
         case pageSponsorBlock, pageCache, pageDebug, pageDownloads
         case theme, autoDarkStart, autoDarkEnd, appIcon
-        case appLanguage, region
+        case region
         case quality, qualityCellular
         case backgroundPlayback, pipEnabled, hideStatusBar
         case downloadQuality, downloadComments, downloadCaptions
@@ -196,8 +196,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                 "settings.row.appIcon".localized,
                 value: AppIcon.selected.displayName
             )
-        case .appLanguage:
-            return makeAppLanguageCell()
         case .region:
             return makeRegionCell()
         case .autoDarkStart:

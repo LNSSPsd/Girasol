@@ -1,12 +1,11 @@
 import UIKit
 
-// MARK: - Language settings (app language / content language / region)
+// MARK: - Region
 //
-// Three separate concepts (localization plan): UI language, Innertube `hl`
-// (titles/search/feeds — YouTube translates metadata server-side), and `gl`
-// (region gating). "System" clears the stored override; changes fully apply
-// after an app restart, and content/region changes drop the feed cache so
-// stale-language pages never resurface.
+// Innertube `gl` (region gating). The content language (`hl`) follows the
+// device's language (`AppLanguage.effective`); the interface is English.
+// "System" clears the stored region; changes fully apply after an app
+// restart, and the feed cache is dropped so stale pages never resurface.
 
 extension SettingsViewController {
     /// Curated `gl` options.
@@ -15,22 +14,13 @@ extension SettingsViewController {
         "TR", "JP", "KR", "TW", "IN", "ID", "VN", "SA", "TH", "GB", "CA"
     ]
 
-    /// Names come from iOS's built-in CLDR catalog, rendered in the APP's
-    /// UI language (not the device locale) so the list matches the rest of
-    /// the interface.
+    /// Region names from iOS's built-in catalog, in English like the rest
+    /// of the interface.
     private var namesLocale: Locale {
-        Locale(identifier: AppLanguage.effective.rawValue)
+        Locale(identifier: "en")
     }
 
     // MARK: Cells
-
-    func makeAppLanguageCell() -> UITableViewCell {
-        makeDisclosureCell(
-            "settings.row.appLanguage".localized,
-            value: AppLanguage.override?.displayName
-                ?? "settings.language.system".localized
-        )
-    }
 
     func makeRegionCell() -> UITableViewCell {
         makeDisclosureCell(
@@ -47,8 +37,6 @@ extension SettingsViewController {
 
     func handleLanguageSelection(_ row: Row) -> Bool {
         switch row {
-        case .appLanguage:
-            showAppLanguagePicker()
         case .region:
             showRegionPicker()
         default:
@@ -71,28 +59,8 @@ extension SettingsViewController {
         return "settings.language.system".localized + " (\(systemValue))"
     }
 
-    private func languageName(_ code: String) -> String {
-        namesLocale.localizedString(forLanguageCode: code)?
-            .capitalized ?? code
-    }
-
     private func regionName(_ code: String) -> String {
         namesLocale.localizedString(forRegionCode: code) ?? code
-    }
-
-    private func showAppLanguagePicker() {
-        let options = [(nil, "settings.language.system".localized)]
-            + AppLanguage.allCases.map { ($0.rawValue, $0.displayName) }
-        presentCodePicker(
-            title: "settings.row.appLanguage".localized,
-            options: options,
-            selected: AppLanguage.override?.rawValue
-        ) { code in
-            AppLanguage.override = code.flatMap(AppLanguage.init(rawValue:))
-            // Content (`hl`) follows the app language — cached feed pages
-            // carry the old language.
-            AppCache.shared.clearAllDiskCache()
-        }
     }
 
     private func showRegionPicker() {

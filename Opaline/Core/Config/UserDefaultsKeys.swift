@@ -67,7 +67,6 @@ enum UserDefaultsKeys {
 
     enum Localization {
         /// In-app UI language override; absent = follow the system.
-        static let appLanguage = "localization_appLanguage"
         /// Innertube `gl`; absent = device region.
         static let region = "localization_region"
     }

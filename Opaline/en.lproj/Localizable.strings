@@ -536,10 +536,9 @@
 
 /* ===== Settings: language section ===== */
 
-"settings.section.language" = "Language";
-"settings.footer.language" = "App language changes both the interface and the content: titles, search and feeds follow it (YouTube translates metadata server-side, like the official app). Changes apply fully after an app restart.";
+"settings.section.language" = "Region";
+"settings.footer.language" = "Titles, search and feeds come in your device's language. Region decides which videos YouTube offers. Changes apply fully after an app restart.";
 /* Rows */
-"settings.row.appLanguage" = "App Language";
 "settings.row.region" = "Region";
 /* Picker option following the device language/region */
 "settings.language.system" = "System";
