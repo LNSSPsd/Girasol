@@ -199,17 +199,26 @@ static const CGFloat OPLineInsetY = 8;
 			                 completion:nil];
 		}
 	}
-	BOOL userScrolling = self.manualScrollUntil && [self.manualScrollUntil timeIntervalSinceNow] > 0;
-	if (!userScrolling)
+	if (!self.userIsScrolling)
 		[self scrollToCurrentAnimated:animated && !self.needsPosition];
 	if (!animated || self.needsPosition)
 		[self positionIfNeeded];
 }
 
+/// A finger on the lyrics — held still, dragging, or the glide after it —
+/// and a few seconds after: the highlight still moves from line to line,
+/// the lines themselves stay where the finger put them.
+- (BOOL)userIsScrolling {
+	UITableView *table = self.tableView;
+	if (table.isTracking || table.isDragging || table.isDecelerating)
+		return YES;
+	return self.manualScrollUntil && [self.manualScrollUntil timeIntervalSinceNow] > 0;
+}
+
 /// Jumps to the current line once the view has a real size and its rows
 /// are measured for it; until then it stays pending.
 - (void)positionIfNeeded {
-	if (!self.needsPosition || self.currentLine < 0)
+	if (!self.needsPosition || self.currentLine < 0 || self.userIsScrolling)
 		return;
 	if (self.window == nil || self.bounds.size.height < 1 ||
 	    self.measuredWidth != self.bounds.size.width || self.rowHeights.count != self.lyrics.lines.count)
