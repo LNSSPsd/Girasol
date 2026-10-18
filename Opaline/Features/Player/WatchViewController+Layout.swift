@@ -61,12 +61,6 @@ extension WatchViewController {
             name: PlaybackQueue.didChangeNotification,
             object: nil
         )
-        nc.addObserver(
-            self,
-            selector: #selector(audioTracksDidChange(_:)),
-            name: .sourceAudioTracksDidChange,
-            object: nil
-        )
         addDownloadObservers()
         // Only to release the orientation lock a fullscreen toggle took — the
         // rotation itself is UIKit's job. Generation runs app-wide from

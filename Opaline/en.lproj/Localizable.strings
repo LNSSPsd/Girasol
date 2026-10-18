@@ -293,7 +293,6 @@
 "settings.section.appearance" = "Appearance";
 "settings.section.theme" = "Theme";
 "settings.section.playback" = "Playback";
-"settings.section.autoDub" = "Dubbing";
 "settings.section.home" = "Home";
 "settings.section.cache" = "Cache";
 "settings.section.ryd" = "Return YouTube Dislike";
@@ -304,7 +303,6 @@
 "settings.footer.themeAutoSystem" = "Auto follows the system appearance.";
 "settings.footer.themeAutoHours" = "Auto switches to the dark theme between the hours above.";
 "settings.footer.playback" = "Zoom to Fill automatically scales the video in fullscreen so no black bars remain. Pinch in the player overrides it per video.\n\nAutoplay plays the next suggested video after a 5s countdown. The Mix toggle applies the same instantly to mix/playlist queues.";
-"settings.footer.autoDub" = "When a video's original language differs from the dub language, the matching audio track is selected automatically.";
 "settings.footer.home" = "How recommendation shelves are shown: one continuous grid or TV-style horizontal rails.";
 "settings.footer.ryd" = "Dislike counts are powered by Return YouTube Dislike (returnyoutubedislike.com) — an open community project.";
 "settings.footer.debug" = "Choose which ways of playing a video are used, and the order they are tried in. The solver server answers the throttling challenge the TV client's streams carry (and mints its token).";
@@ -341,9 +339,6 @@
 "settings.row.autoplayMix" = "Autoplay (%1$@)";
 
 /* Auto-dub rows: master toggle, dub-language picker, AI-dub exclusion */
-"settings.row.autoDub" = "Start Videos Dubbed";
-"settings.row.autoDubLanguage" = "Dub Language";
-"settings.row.autoDubIgnoreAI" = "Ignore AI Dubs";
 
 /* Home layout row + option names */
 "settings.row.homeLayout" = "Home Layout";

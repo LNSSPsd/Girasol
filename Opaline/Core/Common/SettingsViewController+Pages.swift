@@ -129,11 +129,7 @@ extension SettingsViewController {
     }
 
     private var playbackSections: [Section] {
-        var autoDubRows: [Row] = [.autoDubEnabled]
-        if AutoDubPreference.isEnabled {
-            autoDubRows.append(contentsOf: [.autoDubLanguage, .autoDubIgnoreAI])
-        }
-        return [
+        [
             Section(
                 header: "settings.section.videoQuality".localized,
                 footer: nil,
@@ -152,11 +148,6 @@ extension SettingsViewController {
                 header: "settings.section.ryd".localized,
                 footer: "settings.footer.ryd".localized,
                 rows: [.rydEnabled]
-            ),
-            Section(
-                header: "settings.section.autoDub".localized,
-                footer: "settings.footer.autoDub".localized,
-                rows: autoDubRows
             )
         ]
     }

@@ -35,11 +35,10 @@ extension InnertubeVideoSource {
                 )
             }
         }
-        // A probe-picked track wins; otherwise the auto-dub preference picks,
-        // so the very first build is already on the right track.
-        let pendingId = pendingAudioTrackId
+        // A track picked before the first build starts it; otherwise the
+        // video's default track plays.
+        let startId = pendingAudioTrackId
         pendingAudioTrackId = nil
-        let startId = pendingId ?? AutoDubPreference.autoDubTrack(in: tracks)?.id
         let format = startId.flatMap { id in
             info.allDashAudioFormats.first { $0.audioTrackId == id }
         } ?? info.dashAudioFormat

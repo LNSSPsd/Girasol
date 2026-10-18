@@ -14,7 +14,6 @@ final class SettingsViewController: UIViewController {
         case downloadQuality, downloadComments, downloadCaptions
         case autoZoomToFill
         case autoplayEnabled, autoplayMixEnabled
-        case autoDubEnabled, autoDubLanguage, autoDubIgnoreAI
         case homeLayout, defaultTab
         case persistCache, feedCacheDays
         case imageCacheEnabled, imageCacheDays, thumbnailQuality
@@ -280,12 +279,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             ) {
                 AutoplayPreference.isMixEnabled = $0
             }
-        case .autoDubEnabled:
-            return makeAutoDubToggleCell()
-        case .autoDubLanguage:
-            return makeAutoDubLanguageCell()
-        case .autoDubIgnoreAI:
-            return makeAutoDubIgnoreAICell()
         case .homeLayout:
             return makeDisclosureCell(
                 "settings.row.homeLayout".localized,
@@ -396,7 +389,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         let handlers = [
             handlePageSelection,
             handleDebugSelection, handleThemeSelection,
-            handleLanguageSelection, handleAutoDubSelection,
+            handleLanguageSelection,
             handleAboutSelection,
             handleDownloadSelection,
             handleGeneralSelection

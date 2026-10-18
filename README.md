@@ -29,7 +29,7 @@ When Google dropped support for the official YouTube app on older devices, there
 - **Picture-in-Picture** — watch while using other apps
 - **SponsorBlock** — skip sponsored segments automatically
 - **Return YouTube Dislike** — see dislike counts again
-- **Audio tracks** — switch dubbed audio on multi-language videos, or start videos dubbed in your language automatically; AI auto-dubs are marked "(AI)"
+- **Audio tracks** — switch dubbed audio on multi-language videos; AI auto-dubs are marked "(AI)"
 - **Subtitles** — full subtitle/caption support with VTT parsing
 - **Search & browse** — live suggestions, recent-search history, filters (sort, upload date, type, duration), channel pages, playlists
 - **Smart home feed** — endless recommendations with category chips read from your feed's shelves

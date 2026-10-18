@@ -27,23 +27,6 @@ extension WatchViewController {
         )
     }
 
-    /// Auto-dub: tracks discovered by the composite's background probe after
-    /// playback started. If the preference picks a dub, switch to it through
-    /// the same path a manual pick uses.
-    @objc
-    func audioTracksDidChange(_ note: Notification) {
-        guard let source = playbackFacade.activeVideoSource,
-              note.object as? VideoSource === source,
-              let target = AutoDubPreference.autoDubTrack(
-                  in: source.availableAudioTracks
-              ),
-              target != source.currentAudioTrack else {
-            return
-        }
-        AppLog.player("autoDub: switching to \(target.id)")
-        selectAudioTrack(target, source: source)
-    }
-
     private func selectAudioTrack(
         _ track: AudioTrack,
         source: VideoSource

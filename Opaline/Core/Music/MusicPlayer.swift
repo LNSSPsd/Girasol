@@ -273,7 +273,6 @@ final class MusicPlayer: NSObject {
     private func configureFacade() {
         facade.context = self
         facade.tracksWatchtime = false
-        facade.listsDubs = false
     }
 
     /// Plays reported with the web account (YouTube Music's history); with
@@ -1531,7 +1530,6 @@ private final class Prefetcher: PlaybackContext {
         let facade = PlaybackFacade()
         facade.context = self
         facade.tracksWatchtime = false
-        facade.listsDubs = false
         let token = CancellationToken()
         pending = (track, facade, token)
         AppLog.player("music: preloading next \(track.id)")

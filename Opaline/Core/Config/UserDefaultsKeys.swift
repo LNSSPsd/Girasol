@@ -97,13 +97,6 @@ enum UserDefaultsKeys {
         static let livingRoomPoTokenId = "playback_livingRoomPoTokenId"
     }
 
-    enum AutoDub {
-        static let enabled = "autoDub_enabled"
-        static let ignoreAIDubs = "autoDub_ignoreAIDubs"
-        /// Preferred dub language code; absent = follow the app language.
-        static let language = "autoDub_language"
-    }
-
     enum Autoplay {
         /// Suggestion ("Up Next") autoplay: 5s countdown overlay.
         static let enabled = "autoplay_enabled"
