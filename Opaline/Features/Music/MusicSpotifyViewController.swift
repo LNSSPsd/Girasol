@@ -246,7 +246,7 @@ final class MusicSpotifyViewController: MusicListViewController {
             MusicPlaylistEditor.choosePrivacy(
                 title: "Who can see \"\(title)\"?", from: self, anchor: self.importButton
             ) { [weak self] privacy in
-                self?.importSongs(songs.map(\.id), title: title, privacy: privacy)
+                self?.importSongs(songs, title: title, privacy: privacy)
             }
         })
         present(alert, animated: true)
@@ -254,7 +254,8 @@ final class MusicSpotifyViewController: MusicListViewController {
 
     /// Created with the first 50 songs, the rest added 50 at a time: one
     /// request with every id is more than YouTube is known to take.
-    private func importSongs(_ ids: [String], title: String, privacy: PlaylistPrivacy) {
+    private func importSongs(_ songs: [Video], title: String, privacy: PlaylistPrivacy) {
+        let ids = songs.map(\.id)
         importButton.isEnabled = false
         statusLabel.text = "Importing…"
         let chunk = 50
@@ -271,7 +272,9 @@ final class MusicSpotifyViewController: MusicListViewController {
                     return
                 }
                 self.addRest(Array(ids.dropFirst(chunk)), to: id, added: min(ids.count, chunk), chunk: chunk) { added in
-                    self.finishImport(id: id, title: title, privacy: privacy, added: added, of: ids.count)
+                    self.finishImport(
+                        id: id, title: title, privacy: privacy, songs: songs, added: added, of: ids.count
+                    )
                 }
             }
         }
@@ -307,7 +310,9 @@ final class MusicSpotifyViewController: MusicListViewController {
         }
     }
 
-    private func finishImport(id: String, title: String, privacy: PlaylistPrivacy, added: Int, of total: Int) {
+    private func finishImport(
+        id: String, title: String, privacy: PlaylistPrivacy, songs: [Video], added: Int, of total: Int
+    ) {
         AppLog.player("spotify playlist \(playlistId): imported \(added) of \(total) into \(id) (\(privacy.rawValue))")
         updateStatus()
         MusicPlaylistPrivacy.note(id, privacy)
@@ -320,7 +325,9 @@ final class MusicSpotifyViewController: MusicListViewController {
         } else {
             ToastView.show("Imported \(added) songs into \(title)", in: view)
         }
-        navigationController?.pushViewController(MusicCollectionViewController(collection: created), animated: true)
+        navigationController?.pushViewController(
+            MusicCollectionViewController(created: created, tracks: Array(songs.prefix(added))), animated: true
+        )
     }
 
     // MARK: - Table

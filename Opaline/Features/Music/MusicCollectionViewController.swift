@@ -51,6 +51,16 @@ final class MusicCollectionViewController: MusicListViewController {
         albumRef = album
     }
 
+    /// A playlist just made (an import): shown with its songs at once, as
+    /// YouTube lists a new playlist only seconds later — read right away,
+    /// it "could not be loaded". The page catches up in the background.
+    convenience init(created collection: Playlist, tracks: [Video]) {
+        self.init(collection: collection)
+        createdTracks = tracks
+    }
+
+    private var createdTracks: [Video]?
+
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
@@ -131,6 +141,11 @@ final class MusicCollectionViewController: MusicListViewController {
             showTracks(DownloadStore.downloads().filter { DownloadStore.isDownloaded($0.id) })
         } else if let albumRef {
             loadAlbumPage(albumRef)
+        } else if let created = createdTracks {
+            spinner.stopAnimating()
+            showTracks(created)
+            markOwn()
+            catchUp(after: 3, triesLeft: 5)
         } else {
             loadTracks()
         }
@@ -522,6 +537,34 @@ final class MusicCollectionViewController: MusicListViewController {
             self.showTracks(result.tracks, entryIds: result.entryIds)
             if result.isOwn {
                 self.markOwn()
+            }
+        }
+    }
+
+    /// YouTube Music's page of a just-made playlist once it lists every song
+    /// (its entry ids are what removals need); until then what was added
+    /// stays on screen.
+    private func catchUp(after delay: TimeInterval, triesLeft: Int) {
+        guard triesLeft > 0, OPMusicWebAccount.signedIn, let expected = createdTracks?.count else {
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else {
+                return
+            }
+            YTMusicPublic.playlist(self.collection.id) { [weak self] result in
+                guard let self else {
+                    return
+                }
+                guard let result, result.tracks.count >= expected else {
+                    AppLog.player(
+                        "music: new playlist \(self.collection.id) not listed yet"
+                            + " (\(result.map { "\($0.tracks.count)" } ?? "refused") of \(expected))"
+                    )
+                    self.catchUp(after: delay * 2, triesLeft: triesLeft - 1)
+                    return
+                }
+                self.showTracks(result.tracks, entryIds: result.entryIds)
             }
         }
     }
