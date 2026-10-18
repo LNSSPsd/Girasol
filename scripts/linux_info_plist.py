@@ -55,10 +55,11 @@ def app_keys(info):
                                 "AppIcon83.5x83.5"]),
     ):
         icons = info.setdefault(key, {})
-        icons["CFBundlePrimaryIcon"] = {
-            "CFBundleIconFiles": files,
-            "CFBundleIconName": "AppIcon",
-        }
+        # No CFBundleIconName: it sends iOS to an asset catalog (Assets.car)
+        # this build cannot make, and a fresh install then shows no icon.
+        # (Updates of an app first installed from an Xcode build keep the
+        # icon iOS had cached, which hid this.)
+        icons["CFBundlePrimaryIcon"] = {"CFBundleIconFiles": files}
 
 
 def main():
