@@ -219,26 +219,60 @@ publish: ipa
 		> $(PUBLISH_DIR)/index.html
 	@echo "Published: http://$(LOCAL_IP)/files/girasol/  (tap Install -> TrollStore)"
 
-# Jailbreak packages of the TrollStore build, written by scripts/make_deb.py
-# (Python only: no dpkg-deb, tar, ar or Theos): rootful (/Applications,
-# iphoneos-arm, iOS 14+) and rootless (/var/jb/Applications, iphoneos-arm64,
-# iOS 15+, untested). Same time stamp for every file (the commit's), so a
-# commit always gives the same bytes.
+# Jailbreak packages of the TrollStore build, put together with tar and ar
+# only (no dpkg-deb, no Theos): rootful (/Applications, iphoneos-arm,
+# iOS 14+) and rootless (/var/jb/Applications, iphoneos-arm64, iOS 15+,
+# untested). A .deb is an ar archive of debian-binary ("2.0"),
+# control.tar.gz and data.tar.gz, in that order. The tarballs are GNU
+# format, owned by root, sorted, every entry at the commit's time; gzip -n
+# and ar's deterministic mode add no times of their own, so a commit always
+# gives the same bytes.
 DEB_PACKAGE := $(BUNDLE_ID)
 DEB_HOMEPAGE := https://github.com/LNSSPsd/Girasol
 DEB_ICON := https://raw.githubusercontent.com/LNSSPsd/Girasol/main/Girasol/Resources/AppIcon/AppIcon60x60@3x.png
 DEB_MTIME := $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
-DEB := python3 scripts/make_deb.py --app $(APP) --package $(DEB_PACKAGE) --name Girasol \
-	--version $(VERSION) --maintainer Girasol --homepage $(DEB_HOMEPAGE) --icon $(DEB_ICON) \
-	--summary "YouTube Music and YouTube for iOS 14" \
-	--description "A music player in the style of YouTube Music and a YouTube video app in one, without Shorts." \
-	--mtime $(DEB_MTIME)
+DEB_STAGE := $(OUT)/deb
+DEB_TAR := tar --format=gnu --sort=name --owner=0 --group=0 --numeric-owner \
+	--mtime=@$(DEB_MTIME) --mode='u+rwX,go+rX,go-w' -cf -
+
+# $(1) architecture, $(2) install prefix ("" rootful, /var/jb rootless),
+# $(3) the oldest iOS it installs on.
+define deb_package
+	rm -rf $(DEB_STAGE)/$(1)
+	mkdir -p $(DEB_STAGE)/$(1)/data$(2)/Applications $(DEB_STAGE)/$(1)/control
+	cp -R $(APP) $(DEB_STAGE)/$(1)/data$(2)/Applications/
+	printf '%s\n' \
+		'Package: $(DEB_PACKAGE)' \
+		'Name: Girasol' \
+		'Version: $(VERSION)' \
+		'Architecture: $(1)' \
+		'Section: Applications' \
+		'Priority: optional' \
+		'Depends: firmware (>= $(3))' \
+		"Installed-Size: $$(du -sk $(DEB_STAGE)/$(1)/data | cut -f1)" \
+		'Maintainer: Girasol' \
+		'Homepage: $(DEB_HOMEPAGE)' \
+		'Icon: $(DEB_ICON)' \
+		'Description: YouTube Music and YouTube for iOS 14' \
+		' A music player in the style of YouTube Music and a YouTube video app in one, without Shorts.' \
+		> $(DEB_STAGE)/$(1)/control/control
+	# The home screen learns of an app in /Applications only through uicache.
+	printf '#!/bin/sh\nuicache -p "$(2)/Applications/Girasol.app" 2>/dev/null || uicache -a || true\nexit 0\n' \
+		> $(DEB_STAGE)/$(1)/control/postinst
+	printf '#!/bin/sh\nuicache -a || true\nexit 0\n' > $(DEB_STAGE)/$(1)/control/postrm
+	chmod 0755 $(DEB_STAGE)/$(1)/control/postinst $(DEB_STAGE)/$(1)/control/postrm
+	printf '2.0\n' > $(DEB_STAGE)/$(1)/debian-binary
+	$(DEB_TAR) -C $(DEB_STAGE)/$(1)/control . | gzip -9n > $(DEB_STAGE)/$(1)/control.tar.gz
+	$(DEB_TAR) -C $(DEB_STAGE)/$(1)/data . | gzip -9n > $(DEB_STAGE)/$(1)/data.tar.gz
+	rm -f build/Girasol_$(VERSION)_$(1)$(DEBUG_SUFFIX).deb
+	cd $(DEB_STAGE)/$(1) && ar rcD $(CURDIR)/build/Girasol_$(VERSION)_$(1)$(DEBUG_SUFFIX).deb \
+		debian-binary control.tar.gz data.tar.gz
+	@echo "Built build/Girasol_$(VERSION)_$(1)$(DEBUG_SUFFIX).deb (installs $(2)/Applications/Girasol.app)"
+endef
 
 deb: ipa
-	$(DEB) --arch iphoneos-arm --prefix "" --min-firmware 14.0 \
-		--output build/Girasol_$(VERSION)_iphoneos-arm$(DEBUG_SUFFIX).deb
-	$(DEB) --arch iphoneos-arm64 --prefix /var/jb --min-firmware 15.0 \
-		--output build/Girasol_$(VERSION)_iphoneos-arm64$(DEBUG_SUFFIX).deb
+	$(call deb_package,iphoneos-arm,,14.0)
+	$(call deb_package,iphoneos-arm64,/var/jb,15.0)
 
 # Every release file, one after the other (they share the build tree; only
 # the Info.plist and the entitlements differ): the TrollStore IPA and the

@@ -137,8 +137,7 @@ make ipa JOBS=8         # use 8 parallel jobs (the default is 16)
 The version comes from the `VERSION` file. On GitHub, every push to `main` is built
 (`.github/workflows/build.yml`): when `VERSION` names a version that has no release yet, the
 IPAs and debs are built and published as that release; otherwise a debug IPA is attached to the
-run. The debs are written by `scripts/make_deb.py` in plain Python (no dpkg, Theos or other
-packaging tools needed).
+run. The debs are put together with `tar` and `ar` alone (no dpkg or Theos needed).
 
 The first build takes about a minute; after that, only changed files are rebuilt.
 
