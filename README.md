@@ -127,14 +127,18 @@ directly with `SWIFT_TC=<toolchain>` and `SDKROOT=<sdk>` (the SDK folder must ke
 ```bash
 make ipa                # builds build/Girasol_<version>.ipa (for TrollStore)
 make ipa SANDBOX=1      # builds build/Girasol_<version>_sandboxed.ipa
-make release            # builds both
+make deb                # jailbreak packages: Girasol_<version>_iphoneos-arm.deb (rootful)
+                        # and _iphoneos-arm64.deb (rootless, untested)
+make release            # builds all of them
 make ipa DEBUG=1        # an unoptimized build, Girasol_<version>_debug.ipa
 make ipa JOBS=8         # use 8 parallel jobs (the default is 16)
 ```
 
 The version comes from the `VERSION` file. On GitHub, every push to `main` is built
-(`.github/workflows/build.yml`): when `VERSION` names a version that has no release yet, both
-IPAs are built and published as that release; otherwise a debug IPA is attached to the run.
+(`.github/workflows/build.yml`): when `VERSION` names a version that has no release yet, the
+IPAs and debs are built and published as that release; otherwise a debug IPA is attached to the
+run. The debs are written by `scripts/make_deb.py` in plain Python (no dpkg, Theos or other
+packaging tools needed).
 
 The first build takes about a minute; after that, only changed files are rebuilt.
 

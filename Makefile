@@ -1,7 +1,7 @@
 SWIFTLINT ?= swiftlint
 SWIFTFORMAT ?= swiftformat
 
-.PHONY: lint lint-fix analyze format format-check ipa publish release clean
+.PHONY: lint lint-fix analyze format format-check ipa deb publish release clean
 
 lint:
 	$(SWIFTLINT) lint --strict
@@ -219,11 +219,33 @@ publish: ipa
 		> $(PUBLISH_DIR)/index.html
 	@echo "Published: http://$(LOCAL_IP)/files/girasol/  (tap Install -> TrollStore)"
 
-# Both kinds, one after the other (they share the build tree; only the
-# Info.plist and the entitlements differ).
+# Jailbreak packages of the TrollStore build, written by scripts/make_deb.py
+# (Python only: no dpkg-deb, tar, ar or Theos): rootful (/Applications,
+# iphoneos-arm, iOS 14+) and rootless (/var/jb/Applications, iphoneos-arm64,
+# iOS 15+, untested). Same time stamp for every file (the commit's), so a
+# commit always gives the same bytes.
+DEB_PACKAGE := $(BUNDLE_ID)
+DEB_HOMEPAGE := https://github.com/LNSSPsd/Girasol
+DEB_ICON := https://raw.githubusercontent.com/LNSSPsd/Girasol/main/Girasol/Resources/AppIcon/AppIcon60x60@3x.png
+DEB_MTIME := $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
+DEB := python3 scripts/make_deb.py --app $(APP) --package $(DEB_PACKAGE) --name Girasol \
+	--version $(VERSION) --maintainer Girasol --homepage $(DEB_HOMEPAGE) --icon $(DEB_ICON) \
+	--summary "YouTube Music and YouTube for iOS 14" \
+	--description "A music player in the style of YouTube Music and a YouTube video app in one, without Shorts." \
+	--mtime $(DEB_MTIME)
+
+deb: ipa
+	$(DEB) --arch iphoneos-arm --prefix "" --min-firmware 14.0 \
+		--output build/Girasol_$(VERSION)_iphoneos-arm$(DEBUG_SUFFIX).deb
+	$(DEB) --arch iphoneos-arm64 --prefix /var/jb --min-firmware 15.0 \
+		--output build/Girasol_$(VERSION)_iphoneos-arm64$(DEBUG_SUFFIX).deb
+
+# Every release file, one after the other (they share the build tree; only
+# the Info.plist and the entitlements differ): the TrollStore IPA and the
+# debs from it, then the sandboxed IPA.
 release:
-	$(MAKE) ipa SANDBOX=0 USE_UPSTREAM_SOLVER=0
+	$(MAKE) deb SANDBOX=0 USE_UPSTREAM_SOLVER=0
 	$(MAKE) ipa SANDBOX=1 USE_UPSTREAM_SOLVER=0
 
 clean:
-	rm -rf build/linux build/linux_debug build/Opaline_*.ipa build/Girasol_*.ipa
+	rm -rf build/linux build/linux_debug build/Opaline_*.ipa build/Girasol_*.ipa build/Girasol_*.deb

@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: CC0-1.0
 # Every push to main builds Girasol on Linux, as locally:
 # - VERSION names a version with no GitHub release yet → `make release`
-#   (Girasol_<v>.ipa for TrollStore, Girasol_<v>_sandboxed.ipa) and a
-#   release `v<v>` with both, which creates the tag;
+#   (Girasol_<v>.ipa for TrollStore, Girasol_<v>_sandboxed.ipa, and the
+#   jailbreak debs Girasol_<v>_iphoneos-arm[64].deb) and a release `v<v>`
+#   with all of them, which creates the tag;
 # - otherwise → a debug IPA (`make ipa DEBUG=1`), kept as a download on the
 #   run.
 # Cached: the toolchain and SDK, and each build kind's object files.
@@ -121,7 +122,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Girasol-${{ steps.kind.outputs.version }}${{ steps.kind.outputs.release != 'true' && format('-debug-{0}', github.sha) || '' }}
-          path: build/Girasol_*.ipa
+          path: |
+            build/Girasol_*.ipa
+            build/Girasol_*.deb
 
       - name: GitHub release
         if: steps.kind.outputs.release == 'true'
@@ -130,4 +133,5 @@ jobs:
           VERSION: ${{ steps.kind.outputs.version }}
         run: |
           gh release create "v$VERSION" build/Girasol_"$VERSION".ipa build/Girasol_"$VERSION"_sandboxed.ipa \
+            build/Girasol_"$VERSION"_iphoneos-arm.deb build/Girasol_"$VERSION"_iphoneos-arm64.deb \
             --target "$GITHUB_SHA" --title "Girasol $VERSION" --generate-notes
