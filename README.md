@@ -105,16 +105,19 @@ yourself (see below), copy it to the iPhone and open it in TrollStore.
 
 ## Build on Linux
 
-You need:
+You don't need Theos itself. The build only uses a toolchain and an SDK, and expects them
+where [Theos](https://theos.dev) would keep them:
 
-- [Theos](https://theos.dev), installed in `~/theos`;
-- a Swift 5.8 toolchain for building iOS apps on Linux, in
-  `~/theos/toolchain/swift-5.8/linux/iphone` (it provides `swiftc`, `clang` and `ldid`);
-- the **iOS 14 SDK** (`iPhoneOS14.*.sdk`) in `~/theos/sdks/`. A newer SDK builds an app that
-  crashes on iOS 14;
+- a Swift 5.8 toolchain for building iOS apps on Linux (with `swiftc`, `clang` and `ldid`),
+  in `~/theos/toolchain/swift-5.8/linux/iphone`;
+- the **iOS 14 SDK** (`iPhoneOS14.*.sdk`, for example from
+  [theos/sdks](https://github.com/theos/sdks)) in `~/theos/sdks/`. A newer SDK builds an app
+  that crashes on iOS 14;
 - `make`, `python3` and `zip`.
 
-Other locations can be given as `make THEOS=… SWIFT_TC=… SDKROOT=…`.
+They can live elsewhere: `make THEOS=<folder>` changes the `~/theos` part, or give each one
+directly with `SWIFT_TC=<toolchain>` and `SDKROOT=<sdk>` (the SDK folder must keep its
+`iPhoneOS14.x.sdk` name: the build reads the version from it).
 
 ```bash
 make ipa                # builds build/Opaline_<version>.ipa
@@ -169,3 +172,8 @@ to Google, YouTube or Spotify.
 
 [GNU General Public License v3.0](LICENSE), like Opaline. Anything based on Girasol must also
 be released under GPLv3, with its source code.
+
+The changes Girasol makes to Opaline are also dedicated to the public domain under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): you may use that code in any way,
+without conditions. Opaline's own code stays under GPLv3 only, so the app as a whole, and any
+part that includes Opaline's code, remains GPLv3.
