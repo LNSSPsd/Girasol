@@ -64,13 +64,24 @@ export SWIFT_USE_OLD_DRIVER := 1
 
 SWIFTFLAGS := -resource-dir $(SWIFT_TC)/lib/swift -tools-directory $(SWIFT_TC)/bin \
 	-target arm64-apple-ios$(MIN_OS) -sdk $(SDKROOT) -swift-version 5 \
-	-wmo -num-threads $(JOBS) -suppress-warnings \
+	-suppress-warnings \
 	-Xfrontend -disable-autolink-framework -Xfrontend AVFAudio \
 	-Xlinker -no_implicit_dylibs
 # AVFAudio is a top-level framework only from iOS 14.5; before that it lives
 # inside AVFoundation. Both layouts re-export it from AVFoundation, so the
 # binary binds its symbols there instead of loading the new path directly,
 # which dyld fails to find on older systems.
+# The app builds incrementally: one object per Swift file in obj-app, and
+# only the files changed (and those that depend on them) recompile — a
+# one-file change takes seconds instead of the whole module's minute.
+# WMO=1 builds the whole module at once instead (cross-file optimisation).
+WMO ?= 0
+ifeq ($(WMO),1)
+APP_SWIFTMODE := -wmo -num-threads $(JOBS)
+else
+APP_SWIFTMODE = -incremental -enable-batch-mode -j $(JOBS) \
+	-output-file-map $(CURDIR)/$(OUT)/obj-app/files.json
+endif
 ifeq ($(DEBUG),1)
 SWIFTFLAGS += -Onone -g -DDEBUG
 else
@@ -113,7 +124,8 @@ $(OUT)/objc/%.o: %.m $(OBJC_HDRS) Makefile
 
 $(OUT)/Opaline: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
 	@mkdir -p $(OUT)/obj-app
-	cd $(OUT)/obj-app && $(SWIFTC) $(SWIFTFLAGS) -module-name Opaline \
+	@python3 scripts/swift_output_map.py $(CURDIR)/$(OUT)/obj-app $(addprefix $(CURDIR)/,$(APP_SRCS))
+	cd $(OUT)/obj-app && $(SWIFTC) $(SWIFTFLAGS) $(APP_SWIFTMODE) -module-name Opaline \
 		-import-objc-header $(CURDIR)/$(BRIDGING_HEADER) \
 		$(addprefix $(CURDIR)/,$(APP_SRCS)) \
 		$(foreach o,$(OBJC_OBJS),-Xlinker $(CURDIR)/$(o)) \
@@ -124,7 +136,7 @@ $(OUT)/Opaline: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
 
 $(OUT)/OpalineOpenIn: $(APPEX_SRCS) Makefile
 	@mkdir -p $(OUT)/obj-appex
-	cd $(OUT)/obj-appex && $(SWIFTC) $(SWIFTFLAGS) -module-name OpalineOpenIn \
+	cd $(OUT)/obj-appex && $(SWIFTC) $(SWIFTFLAGS) -wmo -num-threads $(JOBS) -module-name OpalineOpenIn \
 		-application-extension -Xlinker -e -Xlinker _NSExtensionMain \
 		$(addprefix $(CURDIR)/,$(APPEX_SRCS)) -o $(CURDIR)/$@
 
