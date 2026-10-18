@@ -130,11 +130,10 @@ Add the Opaline source to your sideloading app to receive automatic updates:
 
 **Option 3 — Build from source**
 
+On Linux, with a theos tree holding the Swift 5.8 iOS toolchain and an iPhoneOS 14 SDK:
+
 ```bash
-git clone https://github.com/verback2308/Opaline.git
-cd Opaline
-cp Config/Local.xcconfig.example Config/Local.xcconfig
-./make_ipa.sh
+make ipa        # build/Opaline_<version>.ipa
 ```
 
 ### Jailbroken devices
@@ -210,20 +209,9 @@ This generates a log file you can attach to your GitHub issue. The log includes 
 
 ## Building
 
-```bash
-git clone https://github.com/verback2308/Opaline.git
-cd Opaline
-cp Config/Local.xcconfig.example Config/Local.xcconfig
-open Opaline.xcodeproj
-```
-
-Edit `Config/Local.xcconfig` and set your own `PRODUCT_BUNDLE_IDENTIFIER`.
-`APP_MANIFEST_URL` in the same file points the update check at a release
-manifest — leave the default to follow this repository, or aim it at a file
-served from your own machine to test notifications. Release builds get the
-URL of whatever repository they are built from, written in by the workflow.
-
-Select the **Opaline** scheme, choose your device or simulator, and build (⌘B).
+`make ipa` builds `build/Opaline_<version>.ipa` on Linux (see the comments at the top of the
+`Makefile` for the toolchain and SDK it expects). Swift builds incrementally; `make ipa WMO=1`
+builds the whole module at once.
 
 ## Architecture
 

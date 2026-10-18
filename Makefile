@@ -19,13 +19,13 @@ format-check:
 	$(SWIFTFORMAT) . --lint
 
 # ---------------------------------------------------------------------------
-# Linux IPA build: `make ipa` (make_ipa.sh is the macOS/Xcode path).
+# The build: `make ipa` on Linux.
 #
 # Needs a theos tree with the Swift 5.8 iOS toolchain and an iPhoneOS SDK:
 #   $(THEOS)/toolchain/swift-5.8/linux/iphone/bin/{swiftc,ldid,bitcode_strip}
 #   $(THEOS)/sdks/iPhoneOS14.*.sdk
 # Output: build/Opaline_<version>.ipa, ad-hoc signed with ldid for AppSync /
-# TrollStore installs, same bundle id and entitlements as make_ipa.sh.
+# TrollStore installs.
 # `make publish` copies it to $(PUBLISH_DIR) with an index.html whose link
 # installs it through TrollStore.
 #
@@ -42,7 +42,7 @@ SDKROOT        ?= $(firstword $(wildcard $(THEOS)/sdks/iPhoneOS14.*.sdk))
 SDK_VERSION    := $(patsubst iPhoneOS%.sdk,%,$(notdir $(SDKROOT)))
 MIN_OS         ?= 14.0
 BUNDLE_ID      ?= com.verback.YTLite
-VERSION        ?= $(shell sed -n 's/.*MARKETING_VERSION = \(.*\);/\1/p' Opaline.xcodeproj/project.pbxproj | head -1)
+VERSION        ?= 1.12.0
 BUILD_NUMBER   ?= 1
 APP_MANIFEST_URL ?= https://raw.githubusercontent.com/verback2308/ytlite/main/source/apps.json
 TEAM_ID        := 4RAT6786W6
