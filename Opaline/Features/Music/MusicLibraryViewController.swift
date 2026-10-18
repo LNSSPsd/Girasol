@@ -264,9 +264,15 @@ final class MusicLibraryViewController: MusicListViewController {
         let collection = collections(in: indexPath.section)[indexPath.row]
         let privacy = Section(rawValue: indexPath.section) == .playlists
             ? MusicPlaylistPrivacy.known(collection.id) : nil
+        // A download the app did not finish says so.
+        var progress: String?
+        if Section(rawValue: indexPath.section) == .downloads, !collection.id.hasPrefix("opaline.") {
+            let count = MusicDownloads.savedCount(ofCollection: collection.id)
+            progress = count.saved < count.total ? "\(count.saved) of \(count.total) downloaded" : nil
+        }
         (cell as? MusicItemCell)?.configure(
             title: collection.title,
-            subtitle: [privacy?.shortTitle, collection.description]
+            subtitle: [privacy?.shortTitle, progress, collection.description]
                 .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "),
             artworkURL: collection.thumbnailURL
         )

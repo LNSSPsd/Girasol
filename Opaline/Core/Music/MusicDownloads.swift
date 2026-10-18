@@ -110,8 +110,18 @@ enum MusicDownloads {
         AppLog.downloads("music: removed \(tracks.count) downloads")
     }
 
+    /// The collection's songs go, except those another downloaded album or
+    /// playlist still has (removing a playlist took an album's songs with it).
     static func remove(collection: Playlist, tracks: [Video]) {
-        remove(tracks)
+        let others = savedCollections().filter { $0.id != collection.id }.flatMap(\.tracks)
+        let kept = Set(others.flatMap { [$0.id] + (MusicSongVersions.songId(of: $0.id).map { [$0] } ?? []) })
+        let own = tracks.filter { track in
+            !kept.contains(track.id) && !(MusicSongVersions.songId(of: track.id).map(kept.contains) ?? false)
+        }
+        if own.count < tracks.count {
+            AppLog.downloads("music: \(tracks.count - own.count) songs of \(collection.title) kept for other downloads")
+        }
+        remove(own)
         let saved = savedCollections().filter { $0.id != collection.id }
         if let data = try? JSONEncoder().encode(saved) {
             UserDefaults.standard.set(data, forKey: collectionsKey)
@@ -176,6 +186,38 @@ enum MusicDownloads {
     /// On Wi-Fi only, at most every few hours. Songs taken out of a playlist
     /// leave its offline list but keep their files (still under Downloaded
     /// songs): a download is never deleted behind the user's back.
+    private static var resumedAt: TimeInterval = 0
+
+    /// Downloads are queued in memory: an album whose download the app did
+    /// not live through (killed, reinstalled) kept its place in Downloads
+    /// with songs never saved. On Wi-Fi, at most every half hour, every
+    /// downloaded album and playlist gets its missing songs queued again.
+    static func resumeIncomplete() {
+        let now = Date().timeIntervalSince1970
+        guard !NetworkType.isOffline, !NetworkType.isCellular, now - resumedAt > 1_800 else {
+            return
+        }
+        resumedAt = now
+        let missing = savedCollections().map { saved in
+            (saved, saved.tracks.filter { state(of: $0.id) == .none })
+        }.filter { !$0.1.isEmpty }
+        guard !missing.isEmpty else {
+            return
+        }
+        AppLog.downloads(
+            "music: resuming " + missing.map { "\($0.0.title) (\($0.1.count) of \($0.0.tracks.count))" }
+                .joined(separator: ", ")
+        )
+        var seen = Set<String>()
+        download(missing.flatMap(\.1).filter { seen.insert($0.id).inserted })
+    }
+
+    /// How many of a downloaded collection's songs are on the device.
+    static func savedCount(ofCollection id: String) -> (saved: Int, total: Int) {
+        let tracks = savedCollections().first { $0.id == id }?.tracks ?? []
+        return (tracks.filter { state(of: $0.id) == .downloaded }.count, tracks.count)
+    }
+
     static func syncPlaylists() {
         guard !NetworkType.isOffline, !NetworkType.isCellular else {
             return
