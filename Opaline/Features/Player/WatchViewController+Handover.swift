@@ -33,8 +33,10 @@ final class PlayerHandover {
 extension WatchViewController {
     /// Room for the seek and preroll; doubled on each retry.
     private static let handoverLead: Double = 0.6
-    /// The view moves to the new player this long before the switch, so
-    /// the old player's stop is never seen as a pause.
+    /// The view moves to the new player this long before the switch, and
+    /// only then is the old one told to stop: a stop scheduled for later
+    /// reads as rate 0 at once, which the view took for a system pause and
+    /// resumed, so both played.
     private static let viewLead: Double = 0.1
     private static let handoverTimeout: TimeInterval = 8
 
@@ -123,15 +125,23 @@ extension WatchViewController {
             return
         }
         let hostTime = CMTimeAdd(hostNow, CMTime(seconds: ahead, preferredTimescale: 1_000_000_000))
-        old.automaticallyWaitsToMinimizeStalling = false
         fresh.setRate(rate, time: target, atHostTime: hostTime)
-        old.setRate(0, time: .invalid, atHostTime: hostTime)
         AppLog.player(String(
             format: "handover: in step at %.2f s, %.2f s from now (attempt %d)",
             CMTimeGetSeconds(target), ahead, handover.attempt + 1
         ))
         DispatchQueue.main.asyncAfter(deadline: .now() + ahead - Self.viewLead) { [weak self] in
-            self?.finish(handover)
+            let left = CMTimeGetSeconds(CMTimeSubtract(hostTime, CMClockGetTime(CMClockGetHostTimeClock())))
+            self?.finish(handover, oldStopsIn: max(left, 0))
+            // A late main thread (the app switch itself) must not leave
+            // both playing: past the moment, the old one stops now.
+            if left > 0.01 {
+                old.automaticallyWaitsToMinimizeStalling = false
+                old.setRate(0, time: .invalid, atHostTime: hostTime)
+            } else {
+                AppLog.player(String(format: "handover: switch %.0f ms late, old player stopped now", -left * 1000))
+                old.pause()
+            }
         }
         // How far apart they were: the new player's clock against where the
         // old one would have been.
@@ -154,12 +164,12 @@ extension WatchViewController {
         if wasPlaying {
             handover.player.playImmediately(atRate: videoPlayerView?.playbackSpeed ?? 1)
         }
-        finish(handover)
+        finish(handover, oldStopsIn: 0)
     }
 
     /// The view, Now Playing and the item observers move to the new player;
     /// the old one is let go once it has stopped.
-    private func finish(_ handover: PlayerHandover) {
+    private func finish(_ handover: PlayerHandover, oldStopsIn stopsIn: TimeInterval) {
         guard !handover.done else {
             return
         }
@@ -173,12 +183,12 @@ extension WatchViewController {
             stopObservingPlayerItem(oldItem)
         }
         playerStatusLabel.isHidden = true
-        videoPlayerView?.handOver(to: handover.player)
+        videoPlayerView?.handOver(to: handover.player, oldStopsIn: stopsIn)
         NowPlayingService.shared.rebindPlayer(handover.player)
         // Its ready callback (Now Playing session, resume bookkeeping) runs
         // now, against the player the view shows.
         startObservingPlayerItem(handover.item)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + stopsIn + 1) {
             old.pause()
             old.replaceCurrentItem(with: nil)
         }

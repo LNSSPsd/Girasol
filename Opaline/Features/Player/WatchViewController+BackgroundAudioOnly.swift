@@ -35,6 +35,7 @@ extension WatchViewController {
         // detached: iOS below 15 pauses a layer-backed player in the
         // background.
         handsOverNextItem = true
+        playerView.layerWaitsForHandover = true
         selectSourceQuality(AudioOnlyMode.quality, source: source)
     }
 
@@ -53,6 +54,7 @@ extension WatchViewController {
         }
         AppLog.player("foreground: restoring \(target.label)")
         handsOverNextItem = true
+        videoPlayerView?.layerWaitsForHandover = true
         selectSourceQuality(target, source: source)
     }
 }

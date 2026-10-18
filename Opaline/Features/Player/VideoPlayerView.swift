@@ -255,6 +255,11 @@ final class VideoPlayerView: UIView {
     var wasPlayingOnResign = false, pipStartPending = false
     let multitaskPause = MultitaskPauseState()
     var pipIsStarting = false, playerNeedsRebuildForPiP = false, pipIsRestoring = false
+    /// A handover to another player is coming (the host's background
+    /// audio-only switch): the layer is neither detached from nor attached
+    /// to a playing player — that hitched its sound — but moved at the
+    /// handover (`handOver(to:)`).
+    var layerWaitsForHandover = false
     var duration: Double = 0
     var rateObservation: NSKeyValueObservation?
     var statusObservation: NSKeyValueObservation?

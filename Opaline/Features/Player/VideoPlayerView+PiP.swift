@@ -167,8 +167,27 @@ extension VideoPlayerView {
             }
             return
         }
-        playerLayer.player = nil
         playerNeedsRebuildForPiP = true
+        if layerWaitsForHandover {
+            AppLog.player("background: layer kept until the handover")
+            // The handover detaches it once the old player has stopped; iOS
+            // allows about a second before it pauses a layer-backed player.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                guard let self, self.layerWaitsForHandover,
+                      UIApplication.shared.applicationState == .background
+                else {
+                    return
+                }
+                AppLog.player("handover: none after 3 s in the background, detaching the layer")
+                self.layerWaitsForHandover = false
+                self.playerLayer.player = nil
+                if let player = self.player, player.rate == 0 {
+                    player.play()
+                }
+            }
+            return
+        }
+        playerLayer.player = nil
         if wasPlayingOnResign, let player, player.rate == 0 {
             player.play()
         }
@@ -181,7 +200,18 @@ extension VideoPlayerView {
         }
         // While PiP runs, AVKit owns the player — rebinding it to the layer
         // here yanks it back and drops playback into a paused state.
-        if playerLayer.player == nil, !isPiPActive {
+        if layerWaitsForHandover {
+            // The video player coming back gets the layer at the handover;
+            // attached to the playing audio-only one it hitched.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                guard let self, self.layerWaitsForHandover, let player = self.player else {
+                    return
+                }
+                AppLog.player("handover: none after 10 s, attaching the layer")
+                self.layerWaitsForHandover = false
+                self.playerLayer.player = player
+            }
+        } else if playerLayer.player == nil, !isPiPActive {
             playerLayer.player = player
         }
         // We are the frontmost app again: undo the multitasking pause.

@@ -38,14 +38,30 @@ extension VideoPlayerView {
     }
 
     /// A player that takes over from the playing one in step
-    /// (`WatchViewController+Handover`): the layer follows only if it is
-    /// attached (in the background it stays detached until activation).
-    func handOver(to newPlayer: AVPlayer) {
+    /// (`WatchViewController+Handover`), `stopsIn` seconds before the old
+    /// one stops. In the foreground the layer goes to the new player; in
+    /// the background it never does (iOS below 15 pauses a layer-backed
+    /// player there) and leaves the old one once that has stopped.
+    func handOver(to newPlayer: AVPlayer, oldStopsIn stopsIn: TimeInterval) {
         removePeriodicObserver()
         removePlayerObservers()
         player = newPlayer
-        if playerLayer.player != nil {
+        layerWaitsForHandover = false
+        if UIApplication.shared.applicationState == .background {
+            if playerLayer.player != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + stopsIn + 0.1) { [weak self] in
+                    guard let self, self.player === newPlayer,
+                          UIApplication.shared.applicationState == .background
+                    else {
+                        return
+                    }
+                    self.playerLayer.player = nil
+                    AppLog.player("handover: layer detached from the stopped player")
+                }
+            }
+        } else if !isPiPActive {
             playerLayer.player = newPlayer
+            AppLog.player("handover: layer on the new player")
         }
         addPeriodicObserver()
         addPlayerObservers()
