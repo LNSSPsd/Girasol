@@ -190,8 +190,9 @@ final class MusicPlayer: NSObject {
     /// A track keeps the thumbnail of the list it came from, and YouTube
     /// Music's lists ask for 60–120 px ("…=w120-h120-l90-rj"): blurry in
     /// the full player. Google's image server makes any size the URL asks.
+    /// Not on mobile data: the list's size is enough there (by design).
     static func fullSize(_ url: String) -> String {
-        guard url.contains("googleusercontent.com") else {
+        guard url.contains("googleusercontent.com"), !NetworkType.isCellular else {
             return url
         }
         return url.replacingOccurrences(
