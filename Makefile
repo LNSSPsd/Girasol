@@ -29,9 +29,9 @@ format-check:
 # `make publish` copies it to $(PUBLISH_DIR) with an index.html whose link
 # installs it through TrollStore.
 #
-# Targets iOS 14 only (built and tested for 14.3). Without actool and
-# ibtool, assets ship as loose PNGs and the launch screen comes from
-# Info.plist's UILaunchScreen.
+# Targets iOS 14 only (built and tested for 14.3). No Xcode formats: images
+# and icons are plain PNGs in Girasol/Resources, the strings plain files,
+# and the launch screen comes from Info.plist's UILaunchScreen.
 # ---------------------------------------------------------------------------
 
 THEOS          ?= $(HOME)/theos
@@ -191,18 +191,12 @@ $(OUT)/app.entitlements:
 ipa: $(OUT)/Girasol $(OUT)/app.entitlements
 	rm -rf $(OUT)/Payload
 	mkdir -p $(APP)
-	# Resources: localizations, asset-catalog images as loose PNGs, icons.
-	for d in Girasol/*.lproj; do \
-		[ "$$d" = Girasol/Base.lproj ] || cp -r "$$d" $(APP)/; done
-	cp Girasol/Assets.xcassets/*.imageset/*.png Girasol/AltIcons/*.png $(APP)/
-	for f in $(APP)/*@1x.png; do mv "$$f" "$${f%@1x.png}.png"; done
-	set -e; I=Girasol/Assets.xcassets/AppIconGirasol.appiconset; \
-	for s in 20 29 40 60; do for x in 2 3; do \
-		cp $$I/Icon-$$s@$${x}x.png $(APP)/AppIcon$${s}x$$s@$${x}x.png; done; done; \
-	for s in 20 29 40 76; do \
-		cp $$I/Icon-$$s@1x.png $(APP)/AppIcon$${s}x$$s~ipad.png; \
-		cp $$I/Icon-$$s@2x.png $(APP)/AppIcon$${s}x$$s@2x~ipad.png; done; \
-	cp $$I/Icon-83.5@2x.png $(APP)/AppIcon83.5x83.5@2x~ipad.png
+	# Resources, as they ship: images and icons loose in the bundle (named as
+	# UIImage(named:) and Info.plist look them up), the strings in en.lproj
+	# (where iOS looks them up; English is the only language).
+	cp Girasol/Resources/Images/*.png Girasol/Resources/AppIcon/*.png $(APP)/
+	mkdir -p $(APP)/en.lproj
+	cp Girasol/Resources/Strings/* $(APP)/en.lproj/
 	$(PLIST) --source Girasol/Info.plist --output $(APP)/Info.plist \
 		--executable Girasol --bundle-id $(BUNDLE_ID)
 	printf 'APPL????' > $(APP)/PkgInfo

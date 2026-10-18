@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Girasol/Assets.xcassets/AppIconGirasol.appiconset/Icon-1024.png" width="128" alt="">
+<img src="Girasol/Resources/AppIcon-1024.png" width="128" alt="">
 
 # Girasol
 

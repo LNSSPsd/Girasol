@@ -36,16 +36,15 @@ def substitute(value, variables):
 
 
 def app_keys(info):
-    """The INFOPLIST_KEY_* settings of the Opaline target, plus the icon
-    and launch screen keys that the asset catalog and storyboard would
-    have produced (neither can be compiled on Linux)."""
+    """The app's fixed keys, plus the icon and launch screen keys: the
+    icons are loose PNGs (Girasol/Resources/AppIcon) and the launch screen
+    is UILaunchScreen; there is no asset catalog or storyboard."""
     info.setdefault("CFBundleDisplayName", "Girasol")
     info["UIApplicationSupportsIndirectInputEvents"] = True
     info["UISupportedInterfaceOrientations"] = ORIENTATIONS_PHONE
     info["UISupportedInterfaceOrientations~iphone"] = ORIENTATIONS_PHONE
     info["UISupportedInterfaceOrientations~ipad"] = ORIENTATIONS_PAD
-    # iOS 14+ draws this instead of a launch storyboard; earlier versions
-    # need the storyboard to run full screen.
+    # iOS 14 draws this: the SplashMark image on the default background.
     info["UILaunchScreen"] = {"UIImageName": "SplashMark"}
     info["UIDeviceFamily"] = [1, 2]
     for key, files in (
