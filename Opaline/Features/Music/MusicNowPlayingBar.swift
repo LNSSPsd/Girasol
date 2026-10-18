@@ -1,7 +1,7 @@
 import UIKit
 
 /// The strip above the tab bar while something plays: artwork, title,
-/// artist, play/pause and next. Tapping it opens the full player.
+/// artist, previous, play/pause and next. Tapping it opens the full player.
 final class MusicNowPlayingBar: UIView {
     static let height: CGFloat = 60
 
@@ -10,6 +10,7 @@ final class MusicNowPlayingBar: UIView {
     private let artwork = ThumbnailImageView(frame: .zero)
     private let titleLabel = UILabel()
     private let artistLabel = UILabel()
+    private let previousButton = UIButton(type: .system)
     private let playButton = UIButton(type: .system)
     private let nextButton = UIButton(type: .system)
     private let progress = UIProgressView(progressViewStyle: .bar)
@@ -23,13 +24,15 @@ final class MusicNowPlayingBar: UIView {
         artwork.layer.cornerRadius = 4
         titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
         artistLabel.font = .systemFont(ofSize: 13)
+        previousButton.setImage(UIImage(systemName: "backward.fill"), for: .normal)
+        previousButton.addTarget(self, action: #selector(previousTapped), for: .touchUpInside)
         playButton.addTarget(self, action: #selector(playTapped), for: .touchUpInside)
         nextButton.setImage(UIImage(systemName: "forward.fill"), for: .normal)
         nextButton.addTarget(self, action: #selector(nextTapped), for: .touchUpInside)
         let text = UIStackView(arrangedSubviews: [titleLabel, artistLabel])
         text.axis = .vertical
         text.spacing = 1
-        for sub in [progress, artwork, text, playButton, nextButton] as [UIView] {
+        for sub in [progress, artwork, text, previousButton, playButton, nextButton] as [UIView] {
             sub.translatesAutoresizingMaskIntoConstraints = false
             addSubview(sub)
         }
@@ -44,7 +47,7 @@ final class MusicNowPlayingBar: UIView {
             artwork.heightAnchor.constraint(equalToConstant: 40),
             text.leadingAnchor.constraint(equalTo: artwork.trailingAnchor, constant: 10),
             text.centerYAnchor.constraint(equalTo: artwork.centerYAnchor),
-            text.trailingAnchor.constraint(equalTo: playButton.leadingAnchor, constant: -8),
+            text.trailingAnchor.constraint(equalTo: previousButton.leadingAnchor, constant: -8),
             nextButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             nextButton.centerYAnchor.constraint(equalTo: artwork.centerYAnchor),
             nextButton.widthAnchor.constraint(equalToConstant: 44),
@@ -52,7 +55,11 @@ final class MusicNowPlayingBar: UIView {
             playButton.trailingAnchor.constraint(equalTo: nextButton.leadingAnchor),
             playButton.centerYAnchor.constraint(equalTo: artwork.centerYAnchor),
             playButton.widthAnchor.constraint(equalToConstant: 44),
-            playButton.heightAnchor.constraint(equalToConstant: 44)
+            playButton.heightAnchor.constraint(equalToConstant: 44),
+            previousButton.trailingAnchor.constraint(equalTo: playButton.leadingAnchor),
+            previousButton.centerYAnchor.constraint(equalTo: artwork.centerYAnchor),
+            previousButton.widthAnchor.constraint(equalToConstant: 44),
+            previousButton.heightAnchor.constraint(equalToConstant: 44)
         ])
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openTapped)))
         NotificationCenter.default.addObserver(
@@ -83,6 +90,7 @@ final class MusicNowPlayingBar: UIView {
         backgroundColor = theme.surface
         titleLabel.textColor = theme.primaryText
         artistLabel.textColor = theme.secondaryText
+        previousButton.tintColor = theme.primaryText
         playButton.tintColor = theme.primaryText
         nextButton.tintColor = theme.primaryText
         progress.progressTintColor = theme.accent
@@ -105,6 +113,12 @@ final class MusicNowPlayingBar: UIView {
         let player = MusicPlayer.shared
         let duration = player.duration
         progress.progress = duration > 0 ? Float(player.currentTime / duration) : 0
+    }
+
+    @objc
+    private func previousTapped() {
+        Feedback.tap()
+        MusicPlayer.shared.previous()
     }
 
     @objc
