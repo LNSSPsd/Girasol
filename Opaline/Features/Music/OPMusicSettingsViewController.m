@@ -11,6 +11,7 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	OPSectionCrossfade,
 	OPSectionCache,
 	OPSectionAmount,
+	OPSectionDisk,
 	OPSectionAccount,
 	OPSectionAfter,
 	OPSectionApp,
@@ -70,6 +71,8 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		return OPMusicSettings.cacheNext ? (NSInteger)OPMusicSettings.cacheChoices.count : 0;
 	case OPSectionCrossfade:
 		return (NSInteger)OPMusicSettings.crossfadeChoices.count;
+	case OPSectionDisk:
+		return (NSInteger)OPMusicSettings.diskCacheChoices.count;
 	default:
 		return 1;
 	}
@@ -82,6 +85,8 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		return @"Crossfade";
 	if (section == OPSectionAfter)
 		return @"After an album or playlist";
+	if (section == OPSectionDisk)
+		return @"Keep played songs";
 	return nil;
 }
 
@@ -106,6 +111,10 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		       @"music.";
 	if (section == OPSectionAmount && OPMusicSettings.cacheNext)
 		return @"Applies to the playing song and the next one. More uses more data up front.";
+	if (section == OPSectionDisk)
+		return @"Songs are saved as they stream, so a song played again starts at once, uses no data and "
+		       @"plays offline (◌ in lists; ↓ is a download). When full, the songs played least lately go "
+		       @"first. Off: songs stream straight from YouTube and nothing is kept.";
 	if (section == OPSectionAccount)
 		return OPMusicWebAccount.signedIn
 		           ? @"Home shows your own YouTube Music shelves, and new playlists can be created."
@@ -190,6 +199,13 @@ typedef NS_ENUM(NSInteger, OPSection) {
 		                                                                  : UITableViewCellAccessoryNone;
 		break;
 	}
+	case OPSectionDisk: {
+		NSInteger megabytes = OPMusicSettings.diskCacheChoices[indexPath.row].integerValue;
+		cell.textLabel.text = [OPMusicSettings titleForDiskCacheMegabytes:megabytes];
+		cell.accessoryType = megabytes == OPMusicSettings.diskCacheMegabytes ? UITableViewCellAccessoryCheckmark
+		                                                                     : UITableViewCellAccessoryNone;
+		break;
+	}
 	case OPSectionAfter: {
 		cell.textLabel.text = @"YouTube Music's recommendations";
 		cell.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -257,6 +273,10 @@ typedef NS_ENUM(NSInteger, OPSection) {
 	} else if (indexPath.section == OPSectionCrossfade) {
 		OPMusicSettings.crossfadeSeconds = OPMusicSettings.crossfadeChoices[indexPath.row].doubleValue;
 		[tableView reloadSections:[NSIndexSet indexSetWithIndex:OPSectionCrossfade]
+		         withRowAnimation:UITableViewRowAnimationNone];
+	} else if (indexPath.section == OPSectionDisk) {
+		OPMusicSettings.diskCacheMegabytes = OPMusicSettings.diskCacheChoices[indexPath.row].integerValue;
+		[tableView reloadSections:[NSIndexSet indexSetWithIndex:OPSectionDisk]
 		         withRowAnimation:UITableViewRowAnimationNone];
 	} else if (indexPath.section == OPSectionAccount) {
 		[self accountTapped];

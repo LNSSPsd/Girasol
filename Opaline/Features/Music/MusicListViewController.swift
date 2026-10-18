@@ -55,6 +55,12 @@ class MusicListViewController: UIViewController, UITableViewDataSource, UITableV
         )
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(playerDidChange),
+            name: .OPAudioCacheDidChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(applyTheme),
             name: ThemeManager.didChangeNotification,
             object: nil
@@ -82,7 +88,9 @@ class MusicListViewController: UIViewController, UITableViewDataSource, UITableV
         case .queued:
             return "… "
         case .none:
-            return ""
+            // Cached in full as it played (`OPAudioCache`): plays offline too.
+            let ids = [videoId] + (MusicSongVersions.songId(of: videoId).map { [$0] } ?? [])
+            return ids.contains(where: OPAudioCache.isComplete(forVideoId:)) ? "◌ " : ""
         }
     }
 

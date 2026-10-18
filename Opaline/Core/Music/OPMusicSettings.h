@@ -5,6 +5,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// Posted when a setting that changes what is playing now is switched
 /// (`levelVolume`, the sleep timer's end-of-song choice).
 FOUNDATION_EXPORT NSNotificationName const OPMusicSettingsDidChangeNotification;
+/// Posted when `diskCacheMegabytes` changes (the cache trims or empties itself).
+FOUNDATION_EXPORT NSNotificationName const OPMusicDiskCacheDidChangeNotification;
 
 /// Music mode's own settings.
 @interface OPMusicSettings : NSObject
@@ -35,6 +37,12 @@ FOUNDATION_EXPORT NSNotificationName const OPMusicSettingsDidChangeNotification;
 /// Albums always play gapless. Default 0.
 @property (class, nonatomic) NSTimeInterval crossfadeSeconds;
 @property (class, nonatomic, readonly) NSArray<NSNumber *> *crossfadeChoices;
+/// Songs played are kept on disk up to this many megabytes (`OPAudioCache`),
+/// the most played kept longest; 0 is off (AVPlayer streams from
+/// googlevideo, nothing is kept). Default 512.
+@property (class, nonatomic) NSInteger diskCacheMegabytes;
+@property (class, nonatomic, readonly) NSArray<NSNumber *> *diskCacheChoices;
++ (NSString *)titleForDiskCacheMegabytes:(NSInteger)megabytes;
 /// The choices offered for `cacheSeconds`.
 @property (class, nonatomic, readonly) NSArray<NSNumber *> *cacheChoices;
 + (NSString *)titleForCacheSeconds:(NSTimeInterval)seconds;

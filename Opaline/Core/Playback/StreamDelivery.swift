@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 /// One video/audio pair to play, and where to start.
@@ -8,6 +9,8 @@ struct DeliveryRequest {
     /// Playhead to resume at — set when this replaces playback already in
     /// progress (a quality switch), nil when starting fresh.
     let resumeAt: Double?
+    /// The video, when the source knows it (music's disk cache keys on it).
+    var videoId: String?
 }
 
 /// How a resolved player response becomes playable bytes.
@@ -52,6 +55,25 @@ final class LegacyRangeDelivery: StreamDelivery {
         completion: @escaping (Result<PreparedPlayback, Error>) -> Void
     ) {
         let info = request.info
+        // Music with the disk cache on: the audio file itself, through
+        // `OPAudioCache`, saved as it plays. Off: AVPlayer fetches the
+        // googlevideo ranges itself, as for video.
+        if AudioOnlyMode.soundOnly, let videoId = request.videoId,
+           let stream = OPAudioCache.stream(
+               forVideoId: videoId,
+               url: client.directURL(baseURL: request.audio.url, poToken: nil),
+               headers: client.streamHeaders(visitorData: info.visitorData),
+               length: request.audio.contentLength,
+               itag: request.audio.itag
+           ) {
+            Self.logLength(of: stream.item, videoId: videoId, expected: info.duration)
+            completion(.success(PreparedPlayback(
+                item: stream.item,
+                resourceLoader: stream.loader,
+                duration: info.duration
+            )))
+            return
+        }
         let input = HLSPlaybackBuilder.BuildInput(
             videoURL: client.directURL(baseURL: request.video.url, poToken: nil),
             audioURL: client.directURL(baseURL: request.audio.url, poToken: nil),
@@ -71,6 +93,22 @@ final class LegacyRangeDelivery: StreamDelivery {
                 captions: info.captionTracks,
                 duration: info.duration
             )))
+        }
+    }
+}
+
+extension LegacyRangeDelivery {
+    /// The cache serves YouTube's file with its header's lengths zeroed
+    /// (AVFoundation otherwise reads it as twice as long): says what
+    /// AVFoundation makes of it, next to YouTube's own length.
+    static func logLength(of item: AVPlayerItem, videoId: String, expected: Double?) {
+        let asset = item.asset
+        asset.loadValuesAsynchronously(forKeys: ["duration"]) {
+            let seconds = CMTimeGetSeconds(asset.duration)
+            AppLog.player(
+                "audio cache: \(videoId) reads as \(String(format: "%.1f", seconds)) s,"
+                    + " YouTube says \(expected.map { String(format: "%.1f", $0) } ?? "?") s"
+            )
         }
     }
 }

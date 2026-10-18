@@ -8,6 +8,8 @@ static NSString *const OPSongVersionsKey = @"music_songVersions";
 static NSString *const OPOriginalTitlesKey = @"music_originalTitles";
 static NSString *const OPLevelVolumeKey = @"music_levelVolume";
 static NSString *const OPCrossfadeKey = @"music_crossfadeSeconds";
+static NSString *const OPDiskCacheKey = @"music_diskCacheMegabytes";
+NSNotificationName const OPMusicDiskCacheDidChangeNotification = @"OPMusicDiskCacheDidChangeNotification";
 
 NSNotificationName const OPMusicSettingsDidChangeNotification = @"OPMusicSettingsDidChangeNotification";
 
@@ -85,6 +87,27 @@ NSNotificationName const OPMusicSettingsDidChangeNotification = @"OPMusicSetting
 
 + (NSArray<NSNumber *> *)crossfadeChoices {
 	return @[ @0, @3, @6, @9, @12 ];
+}
+
++ (NSInteger)diskCacheMegabytes {
+	NSNumber *stored = [NSUserDefaults.standardUserDefaults objectForKey:OPDiskCacheKey];
+	return stored ? stored.integerValue : 512;
+}
+
++ (void)setDiskCacheMegabytes:(NSInteger)megabytes {
+	[NSUserDefaults.standardUserDefaults setInteger:megabytes forKey:OPDiskCacheKey];
+	[NSNotificationCenter.defaultCenter postNotificationName:OPMusicDiskCacheDidChangeNotification object:nil];
+}
+
++ (NSArray<NSNumber *> *)diskCacheChoices {
+	return @[ @0, @256, @512, @1024, @2048 ];
+}
+
++ (NSString *)titleForDiskCacheMegabytes:(NSInteger)megabytes {
+	if (megabytes <= 0)
+		return @"Off";
+	return megabytes < 1024 ? [NSString stringWithFormat:@"%ld MB", (long)megabytes]
+	                        : [NSString stringWithFormat:@"%ld GB", (long)(megabytes / 1024)];
 }
 
 + (NSArray<NSNumber *> *)cacheChoices {

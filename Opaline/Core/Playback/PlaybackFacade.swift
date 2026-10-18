@@ -109,13 +109,16 @@ extension PlaybackFacade {
         videoId: String
     ) -> VideoSource {
         let steps = PlaybackChainSettings.activeSteps()
-        if DownloadStore.isDownloaded(videoId) {
-            AppLog.player("chain: this video is downloaded, playing the file")
+        let cached = AudioOnlyMode.soundOnly && !DownloadStore.isDownloaded(videoId)
+            ? OPAudioCache.completeFileURL(forVideoId: videoId) : nil
+        if DownloadStore.isDownloaded(videoId) || cached != nil {
+            AppLog.player("chain: this \(cached == nil ? "video is downloaded" : "song is cached"), playing the file")
             // The chain rides along unloaded, purely so the quality menu can
             // offer what the network would serve. Nothing touches it until
             // the user picks one of those rows.
             let source = DownloadedSource(
-                network: FallbackChainSource(steps: steps, apiClient: apiClient)
+                network: FallbackChainSource(steps: steps, apiClient: apiClient),
+                file: cached
             )
             activeChain = nil
             activeVideoSource = source

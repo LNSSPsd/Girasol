@@ -25,6 +25,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         AppLog.banner()
         OPMusicWebAccount.logger = { AppLog.innertube($0) }
         MusicSpotifyClipboard.start()
+        OPAudioCache.logger = { AppLog.player($0) }
+        // A song left half-played is finished on Wi-Fi only (by design:
+        // nothing extra on mobile data).
+        OPAudioCache.keepsDownloadingUnused = { !NetworkType.isCellular && !NetworkType.isOffline }
+        OPAudioCache.isDownloaded = { DownloadStore.isDownloaded($0) }
+        NotificationCenter.default.addObserver(forName: .OPMusicDiskCacheDidChange, object: nil, queue: .main) { _ in
+            OPAudioCache.trim()
+        }
+        OPAudioCache.trim()
         configureServices(application)
         // The player has to know how the phone is held the moment it opens —
         // too late to start asking then.

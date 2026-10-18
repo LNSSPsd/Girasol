@@ -221,10 +221,9 @@ final class InnertubeVideoSource: VideoSource {
             "\(name): building with audio \(audio.audioTrackId ?? "default")"
                 + " itag \(audio.itag) xtags \(audio.xtags ?? "-")"
         )
-        deliver(
-            DeliveryRequest(info: info, video: video, audio: audio, resumeAt: resumeAt),
-            completion: completion
-        )
+        var request = DeliveryRequest(info: info, video: video, audio: audio, resumeAt: resumeAt)
+        request.videoId = currentVideoId
+        deliver(request, completion: completion)
     }
 
     private func progressiveItem(

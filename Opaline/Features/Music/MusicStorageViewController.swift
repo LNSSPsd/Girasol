@@ -25,13 +25,24 @@ final class MusicStorageViewController: MusicListViewController {
         NotificationCenter.default.addObserver(
             self, selector: #selector(measure), name: DownloadStore.didChangeNotification, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(measure), name: .OPAudioCacheDidChange, object: nil
+        )
         measure()
     }
+
+    private var cacheSongs = 0
+    private var cacheBytes: UInt64 = 0
 
     /// Sizes come from the files, off the main thread.
     @objc
     private func measure() {
         spinner.startAnimating()
+        OPAudioCache.measure { [weak self] complete, bytes in
+            self?.cacheSongs = Int(complete)
+            self?.cacheBytes = bytes
+            self?.tableView.reloadData()
+        }
         let collections = MusicDownloads.collections()
         let downloads = DownloadStore.downloads()
         DispatchQueue.global(qos: .userInitiated).async {
@@ -74,7 +85,7 @@ final class MusicStorageViewController: MusicListViewController {
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int {
-        3
+        4
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -83,13 +94,18 @@ final class MusicStorageViewController: MusicListViewController {
             return 1
         case 1:
             return rows.count
+        case 3:
+            return 1
         default:
             return songCount > 0 ? 1 : 0
         }
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        section == 1 && !rows.isEmpty ? "Albums and playlists" : nil
+        if section == 3 {
+            return "Kept as played"
+        }
+        return section == 1 && !rows.isEmpty ? "Albums and playlists" : nil
     }
 
     override func tableView(
@@ -114,6 +130,14 @@ final class MusicStorageViewController: MusicListViewController {
                 title: row.collection.title,
                 subtitle: "\(Self.format(row.bytes)) · \(row.saved) of \(row.tracks.count) songs saved",
                 artworkURL: row.collection.thumbnailURL
+            )
+        case 3:
+            let budget = OPMusicSettings.title(forDiskCacheMegabytes: OPMusicSettings.diskCacheMegabytes)
+            cell.configure(
+                title: "\(Self.format(Int64(cacheBytes))) · \(cacheSongs) whole \(cacheSongs == 1 ? "song" : "songs") ◌",
+                subtitle: OPAudioCache.isEnabled()
+                    ? "Up to \(budget) (Music settings) · tap to empty" : "Off in Music settings · tap to empty",
+                artworkURL: nil
             )
         default:
             cell.configure(title: "Remove all music downloads", subtitle: "Video downloads stay", artworkURL: nil)
@@ -145,9 +169,25 @@ final class MusicStorageViewController: MusicListViewController {
             )
         case 2:
             confirmRemoveAll(from: tableView.cellForRow(at: indexPath))
+        case 3:
+            confirmClearCache(from: tableView.cellForRow(at: indexPath))
         default:
             break
         }
+    }
+
+    private func confirmClearCache(from cell: UIView?) {
+        let sheet = UIAlertController(
+            title: "Empty the cache?",
+            message: "Songs kept as they played (\(Self.format(Int64(cacheBytes)))). Downloads stay.",
+            preferredStyle: .actionSheet
+        )
+        sheet.addAction(UIAlertAction(title: "Empty", style: .destructive) { _ in
+            OPAudioCache.clear()
+        })
+        sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        sheet.popoverPresentationController?.sourceView = cell ?? view
+        present(sheet, animated: true)
     }
 
     private func confirmRemoveAll(from cell: UIView?) {

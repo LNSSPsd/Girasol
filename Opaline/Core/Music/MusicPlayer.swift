@@ -163,7 +163,7 @@ final class MusicPlayer: NSObject {
         guard offline else {
             return tracks.isEmpty ? nil : 0
         }
-        return tracks.firstIndex { DownloadStore.isDownloaded($0.id) }
+        return tracks.firstIndex { DownloadStore.isDownloaded($0.id) || OPAudioCache.isComplete(forVideoId: $0.id) }
     }
 
     var currentTime: TimeInterval {
@@ -641,6 +641,7 @@ final class MusicPlayer: NSObject {
     /// A play: the local log, the mix seeds, and YouTube Music's history.
     private func recordPlay(_ track: Video) {
         report(track)
+        OPAudioCache.notePlay(ofVideoId: track.id)
         MusicPlayLog.shared.recordTrack(track)
         recent.removeAll { $0.video.id == track.id }
         recent.append(RecentPlay(video: track, fromMix: mixIds.contains(track.id)))
@@ -847,7 +848,8 @@ final class MusicPlayer: NSObject {
         // A music video's song version (`MusicSongVersions`) plays instead.
         // Not looked up yet: ask, but start within a few seconds either way.
         if MusicSongVersions.isEnabled, !MusicSongVersions.isResolved(track),
-           !NetworkType.isOffline, !DownloadStore.isDownloaded(track.id) {
+           !NetworkType.isOffline, !DownloadStore.isDownloaded(track.id),
+           !OPAudioCache.isComplete(forVideoId: track.id) {
             isLoading = true
             postChange()
             var started = false

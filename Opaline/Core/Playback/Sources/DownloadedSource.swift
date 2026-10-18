@@ -44,8 +44,12 @@ final class DownloadedSource: VideoSource {
     private(set) var isStreaming = false
     private(set) var videoId: String?
 
-    init(network: VideoSource? = nil) {
+    /// A file other than the download's (a song cached in full, `OPAudioCache`).
+    private let file: URL?
+
+    init(network: VideoSource? = nil, file: URL? = nil) {
         self.network = network
+        self.file = file
     }
 
     /// Read off the file itself — nothing about the download is stored
@@ -93,7 +97,7 @@ final class DownloadedSource: VideoSource {
         videoId: String,
         completion: @escaping (Result<PreparedPlayback, Error>) -> Void
     ) {
-        let url = DownloadStore.videoFile(for: videoId)
+        let url = file ?? DownloadStore.videoFile(for: videoId)
         guard FileManager.default.fileExists(atPath: url.path) else {
             completion(.failure(DownloadError.missingFile))
             return
@@ -101,7 +105,7 @@ final class DownloadedSource: VideoSource {
         let asset = AVURLAsset(url: url)
         let seconds = CMTimeGetSeconds(asset.duration)
         localQuality = Self.quality(of: asset)
-        AppLog.player("downloaded file \(videoId): \(Int(seconds))s")
+        AppLog.player("\(file == nil ? "downloaded" : "cached") file \(videoId): \(Int(seconds))s")
         completion(.success(PreparedPlayback(
             item: AVPlayerItem(asset: asset),
             captions: DownloadStore.captionTracks(for: videoId) ?? [],
