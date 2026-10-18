@@ -12,6 +12,8 @@ final class AuthViewController: UIViewController {
     let openButton = UIButton(type: .system)
     let copyButton = UIButton(type: .system)
     private let anonymousButton = UIButton(type: .system)
+    /// Shown only when Opaline is on the phone (`OpalineImportPrompt`).
+    private let importButton = UIButton(type: .system)
     let spinner = UIActivityIndicatorView(style: .white)
     private let contentStack = UIStackView()
 
@@ -63,6 +65,11 @@ final class AuthViewController: UIViewController {
     }
 
     @objc
+    private func importFromOpaline() {
+        OpalineImportPrompt.importNow(from: self)
+    }
+
+    @objc
     private func continueAnonymously() {
         OAuthClient.shared.isAnonymous = true
         if let cb = onContinueAnonymously {
@@ -106,6 +113,7 @@ private extension AuthViewController {
         configureCopyButton()
         configureOpenButton()
         configureAnonymousButton()
+        configureImportButton()
     }
 
     func configureOpenButton() {
@@ -145,6 +153,15 @@ private extension AuthViewController {
         )
     }
 
+    /// Above "Continue Anonymously": coming from Opaline, its sign-in comes
+    /// over with everything else, so this replaces signing in.
+    func configureImportButton() {
+        importButton.setTitle("Import from Opaline", for: .normal)
+        importButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        importButton.addTarget(self, action: #selector(importFromOpaline), for: .touchUpInside)
+        importButton.isHidden = !OpalineImportPrompt.isAvailable
+    }
+
     func configureSpinner() {
         spinner.hidesWhenStopped = true
         spinner.startAnimating()
@@ -167,7 +184,7 @@ private extension AuthViewController {
     }
 
     func addControlSubviews() {
-        let views: [UIView] = [titleLabel, contentStack, anonymousButton]
+        let views: [UIView] = [titleLabel, contentStack, importButton, anonymousButton]
         views.forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
@@ -228,6 +245,13 @@ private extension AuthViewController {
             anonymousButton.bottomAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.bottomAnchor,
                 constant: -28
+            ),
+            importButton.centerXAnchor.constraint(
+                equalTo: view.centerXAnchor
+            ),
+            importButton.bottomAnchor.constraint(
+                equalTo: anonymousButton.topAnchor,
+                constant: -16
             )
         ])
     }

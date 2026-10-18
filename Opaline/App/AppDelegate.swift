@@ -194,8 +194,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         offerOpalineImportOnce()
     }
 
-    /// The first real screen of a launch, signed in or not: the import
-    /// offer (or the result of one) goes on top of it.
+    /// The first real screen of a launch, signed in or not: the result of
+    /// an Opaline import that just closed the app goes on top of it.
     func offerOpalineImportOnce() {
         guard !didOfferOpalineImport else {
             return
