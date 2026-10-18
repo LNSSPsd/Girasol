@@ -170,9 +170,14 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+        // Common modes, not scheduled: a scheduled timer pauses while a
+        // finger is on the lyrics (the run loop's tracking mode), and the
+        // lines stopped moving under it.
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             self?.updateTime()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     override func viewWillDisappear(_ animated: Bool) {

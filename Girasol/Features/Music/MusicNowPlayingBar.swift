@@ -69,9 +69,12 @@ final class MusicNowPlayingBar: UIView {
             name: MusicPlayer.didChangeNotification,
             object: nil
         )
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        // Common modes: the progress keeps moving while a list scrolls.
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             self?.updateProgress()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
         refresh()
     }
 

@@ -101,11 +101,15 @@
 - (void)viewWillAppear:(BOOL)animated {
 	[super viewWillAppear:animated];
 	__weak typeof(self) weakSelf = self;
-	self.timer = [NSTimer scheduledTimerWithTimeInterval:0.2
-	                                             repeats:YES
-	                                               block:^(NSTimer *timer) {
-		                                               [weakSelf tick];
-	                                               }];
+	self.timer = [NSTimer timerWithTimeInterval:0.2
+	                                    repeats:YES
+	                                      block:^(NSTimer *timer) {
+		                                      [weakSelf tick];
+	                                      }];
+	// Common modes: a scheduled timer runs only in the default mode, and the
+	// run loop leaves it while a finger is on the lyrics, so the lines
+	// stopped moving under it.
+	[NSRunLoop.mainRunLoop addTimer:self.timer forMode:NSRunLoopCommonModes];
 	[self tick];
 }
 
