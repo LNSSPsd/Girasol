@@ -7,6 +7,9 @@
 # - otherwise → the same files as debug builds (`make release DEBUG=1`:
 #   …_debug.ipa, …_sandboxed_debug.ipa, …_iphoneos-arm[64]_debug.deb), kept
 #   as downloads on the run.
+# Run by hand with "Re-release" ticked (the repository owner only), the
+# release `v<v>` is built again from this commit and replaces the existing
+# one, tag included.
 # Cached: the toolchain and SDK, and each build kind's object files.
 name: Build
 
@@ -14,6 +17,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      rerelease:
+        description: "Re-release: replace the existing release of VERSION with this commit (owner only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -44,18 +52,29 @@ jobs:
         id: kind
         env:
           GH_TOKEN: ${{ github.token }}
+          RERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.rerelease }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           version=$(tr -d '[:space:]' < VERSION)
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if gh release view "v$version" > /dev/null 2>&1; then
-            echo "Release v$version exists: debug builds"
-            echo "release=false" >> "$GITHUB_OUTPUT"
-            echo "out=build/linux_debug" >> "$GITHUB_OUTPUT"
-          else
-            echo "No release v$version yet: release build"
-            echo "release=true" >> "$GITHUB_OUTPUT"
-            echo "out=build/linux" >> "$GITHUB_OUTPUT"
+          if [ "$RERELEASE" = true ] && [ "$ACTOR" != "$OWNER" ]; then
+            echo "::error::Only $OWNER can re-release."
+            exit 1
           fi
+          if ! gh release view "v$version" > /dev/null 2>&1; then
+            echo "No release v$version yet: release build"
+            kind=release replace=false
+          elif [ "$RERELEASE" = true ]; then
+            echo "Re-release: v$version is built again and replaced"
+            kind=release replace=true
+          else
+            echo "Release v$version exists: debug builds"
+            kind=debug replace=false
+          fi
+          echo "release=$([ $kind = release ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "replace=$replace" >> "$GITHUB_OUTPUT"
+          echo "out=build/linux$([ $kind = debug ] && echo _debug)" >> "$GITHUB_OUTPUT"
 
       - name: Packages
         run: |
@@ -132,7 +151,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.kind.outputs.version }}
+          REPLACE: ${{ steps.kind.outputs.replace }}
         run: |
+          # Only now, with every file built: a failed build keeps the old one.
+          if [ "$REPLACE" = true ]; then
+            gh release delete "v$VERSION" --cleanup-tag --yes
+          fi
           gh release create "v$VERSION" build/Girasol_"$VERSION".ipa build/Girasol_"$VERSION"_sandboxed.ipa \
             build/Girasol_"$VERSION"_iphoneos-arm.deb build/Girasol_"$VERSION"_iphoneos-arm64.deb \
             --target "$GITHUB_SHA" --title "Girasol $VERSION" --generate-notes
