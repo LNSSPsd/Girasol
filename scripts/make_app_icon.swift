@@ -14,9 +14,9 @@
 // CGContext.draw(_:in:):
 //
 //   swiftc -O -o /tmp/mkicon scripts/make_app_icon.swift
-//   /tmp/mkicon <Without Background Logo.png> Opaline/Assets.xcassets/AppIcon.appiconset light
-//   /tmp/mkicon <Without Background Logo.png> Opaline/Assets.xcassets/AppIcon.appiconset dark
-//   /tmp/mkicon <Without Background Logo.png> Opaline/Assets.xcassets/SplashMark.imageset launch
+//   /tmp/mkicon <Without Background Logo.png> Girasol/Assets.xcassets/AppIcon.appiconset light
+//   /tmp/mkicon <Without Background Logo.png> Girasol/Assets.xcassets/AppIcon.appiconset dark
+//   /tmp/mkicon <Without Background Logo.png> Girasol/Assets.xcassets/SplashMark.imageset launch
 //   /tmp/mkicon <Without Background Logo.png> source rounded
 //   /tmp/mkicon <Without Background Logo.png> source rounded-dark
 

@@ -1,6 +1,5 @@
 included:
-  - Opaline
-  - OpalineOpenIn
+  - Girasol
 
 excluded:
   - .build

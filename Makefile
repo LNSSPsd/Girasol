@@ -133,14 +133,14 @@ endif
 OUT       := build/linux$(DEBUG_SUFFIX)
 APP       := $(OUT)/Payload/Girasol.app
 IPA       := build/Girasol_$(VERSION)$(IPA_SUFFIX)$(DEBUG_SUFFIX).ipa
-APP_SRCS  := $(shell find Opaline -name '*.swift')
+APP_SRCS  := $(shell find Girasol -name '*.swift')
 # Objective-C sources compile with clang and reach Swift through the
 # bridging header; their objects go straight to the linker, since swiftc
 # refuses extra inputs in a multi-threaded whole-module build.
-OBJC_SRCS := $(shell find Opaline -name '*.m')
-OBJC_HDRS := $(shell find Opaline -name '*.h')
+OBJC_SRCS := $(shell find Girasol -name '*.m')
+OBJC_HDRS := $(shell find Girasol -name '*.h')
 OBJC_OBJS := $(patsubst %.m,$(OUT)/objc/%.o,$(OBJC_SRCS))
-BRIDGING_HEADER := Opaline/Opaline-Bridging-Header.h
+BRIDGING_HEADER := Girasol/Girasol-Bridging-Header.h
 CLANG := $(SWIFT_TC)/bin/clang
 # No autolinking: importing AVFoundation would add AVFAudio.framework as a
 # load command (see SWIFTFLAGS), and dyld refuses to start the app on iOS
@@ -159,10 +159,10 @@ $(OUT)/objc/%.o: %.m $(OBJC_HDRS) Makefile
 	@mkdir -p $(@D)
 	$(CLANG) $(OBJCFLAGS) -c $< -o $@
 
-$(OUT)/Opaline: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
+$(OUT)/Girasol: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
 	@mkdir -p $(OUT)/obj-app
 	@python3 scripts/swift_output_map.py $(CURDIR)/$(OUT)/obj-app $(addprefix $(CURDIR)/,$(APP_SRCS))
-	cd $(OUT)/obj-app && $(SWIFTC) $(SWIFTFLAGS) $(APP_SWIFTMODE) -module-name Opaline \
+	cd $(OUT)/obj-app && $(SWIFTC) $(SWIFTFLAGS) $(APP_SWIFTMODE) -module-name Girasol \
 		-import-objc-header $(CURDIR)/$(BRIDGING_HEADER) \
 		$(addprefix $(CURDIR)/,$(APP_SRCS)) \
 		$(foreach o,$(OBJC_OBJS),-Xlinker $(CURDIR)/$(o)) \
@@ -188,26 +188,26 @@ $(OUT)/app.entitlements:
 		'</dict></plist>' > $@
 
 # Packaging is cheap, so it always reruns.
-ipa: $(OUT)/Opaline $(OUT)/app.entitlements
+ipa: $(OUT)/Girasol $(OUT)/app.entitlements
 	rm -rf $(OUT)/Payload
 	mkdir -p $(APP)
 	# Resources: localizations, asset-catalog images as loose PNGs, icons.
-	for d in Opaline/*.lproj; do \
-		[ "$$d" = Opaline/Base.lproj ] || cp -r "$$d" $(APP)/; done
-	cp Opaline/Assets.xcassets/*.imageset/*.png Opaline/AltIcons/*.png $(APP)/
+	for d in Girasol/*.lproj; do \
+		[ "$$d" = Girasol/Base.lproj ] || cp -r "$$d" $(APP)/; done
+	cp Girasol/Assets.xcassets/*.imageset/*.png Girasol/AltIcons/*.png $(APP)/
 	for f in $(APP)/*@1x.png; do mv "$$f" "$${f%@1x.png}.png"; done
-	set -e; I=Opaline/Assets.xcassets/AppIconGirasol.appiconset; \
+	set -e; I=Girasol/Assets.xcassets/AppIconGirasol.appiconset; \
 	for s in 20 29 40 60; do for x in 2 3; do \
 		cp $$I/Icon-$$s@$${x}x.png $(APP)/AppIcon$${s}x$$s@$${x}x.png; done; done; \
 	for s in 20 29 40 76; do \
 		cp $$I/Icon-$$s@1x.png $(APP)/AppIcon$${s}x$$s~ipad.png; \
 		cp $$I/Icon-$$s@2x.png $(APP)/AppIcon$${s}x$$s@2x~ipad.png; done; \
 	cp $$I/Icon-83.5@2x.png $(APP)/AppIcon83.5x83.5@2x~ipad.png
-	$(PLIST) --source Opaline/Info.plist --output $(APP)/Info.plist \
+	$(PLIST) --source Girasol/Info.plist --output $(APP)/Info.plist \
 		--executable Girasol --bundle-id $(BUNDLE_ID)
 	printf 'APPL????' > $(APP)/PkgInfo
 	# Binaries and signatures; iOS 14 has the Swift runtime built in.
-	cp $(OUT)/Opaline $(APP)/Girasol
+	cp $(OUT)/Girasol $(APP)/Girasol
 	$(LDID) -S$(OUT)/app.entitlements $(APP)/Girasol
 	rm -f $(IPA)
 	cd $(OUT) && zip -qry $(CURDIR)/$(IPA) Payload
