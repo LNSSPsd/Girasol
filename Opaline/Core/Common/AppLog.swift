@@ -168,7 +168,7 @@ enum AppLog {
         let device = UIDevice.current
         log(
             "App",
-            "Opaline \(version) (\(build)) built \(buildTimestamp()) — \(hardwareModel())"
+            "Girasol \(version) (\(build)) built \(buildTimestamp()) — \(hardwareModel())"
                 + ", \(device.systemName) \(device.systemVersion)"
         )
     }

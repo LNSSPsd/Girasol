@@ -7,13 +7,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     /// A sign-in screen was asked for while the app ran in the background;
     /// the decision is re-taken in `applicationDidBecomeActive`.
     var deferredAuthPresentation = false
+    var didOfferOpalineImport = false
     private let dependencies = AppDependencies.live()
     /// Built during the splash, handed over by `showMain`.
     private var preloadedMain: UIViewController?
     /// Video mode's root while music mode is up and its video still plays:
     /// the watch screen lives in it, and coming back finds it as it was.
     private var parkedVideoRoot: UIViewController?
-    /// A `ytlite://` or youtube.com link that arrived while the splash or
+    /// A `girasol://` or youtube.com link that arrived while the splash or
     /// auth screen was still up — replayed once `showMain` puts the tab
     /// bar on screen. See `AppDelegate+DeepLink.swift`.
     var pendingDeepLink: URL?
@@ -26,6 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         OPMusicWebAccount.logger = { AppLog.innertube($0) }
         MusicSpotifyClipboard.start()
         OPAudioCache.logger = { AppLog.player($0) }
+        OPOpalineImport.logger = { AppLog.log("App", $0) }
         // A song left half-played is finished on Wi-Fi only (by design:
         // nothing extra on mobile data).
         OPAudioCache.keepsDownloadingUnused = { !NetworkType.isCellular && !NetworkType.isOffline }
@@ -189,6 +191,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             ?? makeMain(dependencies: dependencies)
         preloadedMain = nil
         replayPendingDeepLinkIfNeeded()
+        offerOpalineImportOnce()
+    }
+
+    /// The first real screen of a launch, signed in or not: the import
+    /// offer (or the result of one) goes on top of it.
+    func offerOpalineImportOnce() {
+        guard !didOfferOpalineImport else {
+            return
+        }
+        didOfferOpalineImport = true
+        OpalineImportPrompt.launched(in: window)
     }
 
     /// Constructs the tab bar and forces the first screen through a full

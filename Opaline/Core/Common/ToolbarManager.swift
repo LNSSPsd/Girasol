@@ -150,6 +150,7 @@ extension AppDelegate {
             } else {
                 window.rootViewController = auth
             }
+            self?.offerOpalineImportOnce()
         }
     }
 }

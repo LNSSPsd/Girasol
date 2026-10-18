@@ -29,6 +29,7 @@ check("https://www.youtube.com/live/dQw4w9WgXcQ?feature=share", expect: "dQw4w9W
 check("https://www.youtube.com/embed/dQw4w9WgXcQ", expect: "dQw4w9WgXcQ")
 check("https://m.youtube.com/watch?v=dQw4w9WgXcQ", expect: "dQw4w9WgXcQ")
 check("ytlite://watch?v=dQw4w9WgXcQ", expect: "dQw4w9WgXcQ")
+check("girasol://watch?v=dQw4w9WgXcQ", expect: "dQw4w9WgXcQ")
 check("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s", expect: "dQw4w9WgXcQ")
 check("https://youtu.be/UsPIfGgwZYw?si=pb1j5tEy7zsTPi8W&t=87", expect: "UsPIfGgwZYw")
 check("https://youtube.com/shorts/LdGE7FOnE8o?is=kKCMiXDHg8UqtTb8", expect: "LdGE7FOnE8o")
@@ -85,6 +86,7 @@ checkList(
 )
 checkList("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123", expect: "PL123")
 checkList("ytlite://playlist?list=PL123", expect: "PL123")
+checkList("girasol://playlist?list=PL123", expect: "PL123")
 checkList("https://youtu.be/dQw4w9WgXcQ", expect: nil)
 checkList("https://example.com/playlist?list=PL123", expect: nil)
 
@@ -120,6 +122,7 @@ checkSpotify(
 checkSpotify("https://open.spotify.com/intl-ja/playlist/37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
 checkSpotify("spotify:playlist:37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
 checkSpotify("ytlite://spotify?playlist=37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
+checkSpotify("girasol://spotify?playlist=37i9dQZF1DX0XUsuxWHRQd", expect: "37i9dQZF1DX0XUsuxWHRQd")
 checkSpotify("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", expect: nil)
 checkSpotify("https://youtube.com/playlist?list=PL123", expect: nil)
 checkSpotify("ytlite://playlist?list=PL123", expect: nil)

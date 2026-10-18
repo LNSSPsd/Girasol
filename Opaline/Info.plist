@@ -24,24 +24,6 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIconClearLight</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIconClearLight</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIconClearDark</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIconClearDark</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
 		</dict>
 	</dict>
 	<key>CFBundleIcons~ipad</key>
@@ -62,24 +44,6 @@
 				<key>CFBundleIconFiles</key>
 				<array>
 					<string>AppIconDark</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIconClearLight</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIconClearLight</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIconClearDark</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIconClearDark</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -108,13 +72,24 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.verback.YTLite.deeplink</string>
+			<string>app.girasol.deeplink</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>ytlite</string>
+				<string>girasol</string>
 			</array>
 		</dict>
 	</array>
+	<!-- Girasol's own Keychain group, and Opaline's app id and group, for
+	     the one-tap import (OPOpalineImport, OPKeychainGroup). Filled in by
+	     the Makefile. -->
+	<key>OPKeychainGroup</key>
+	<string>$(OP_KEYCHAIN_GROUP)</string>
+	<key>OPOpalineIdentifier</key>
+	<string>$(OP_OPALINE_ID)</string>
+	<key>OPOpalineKeychainGroup</key>
+	<string>$(OP_OPALINE_KEYCHAIN_GROUP)</string>
+	<key>OPOpalineImport</key>
+	<string>$(OP_OPALINE_IMPORT)</string>
 	<!-- The system share sheet offers "Save Video", which writes to Photos.
 	     Without this key iOS kills the app the moment that item is tapped.
 	     English in every language on purpose: the official app carries no

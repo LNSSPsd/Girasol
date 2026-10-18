@@ -10,14 +10,12 @@ enum AppIcon: String, CaseIterable {
     case auto = "auto"
     case light = "AppIconLight"
     case dark = "AppIconDark"
-    case clearLight = "AppIconClearLight"
-    case clearDark = "AppIconClearDark"
 
     static var available: [AppIcon] {
         if #available(iOS 18.0, *) {
             return allCases
         }
-        return [.light, .dark, .clearLight, .clearDark]
+        return [.light, .dark]
     }
 
     /// What the system currently shows, mapped back onto our options.
@@ -47,12 +45,6 @@ enum AppIcon: String, CaseIterable {
             return "settings.theme.light".localized
         case .dark:
             return "settings.theme.dark".localized
-        // Proper nouns, like the Composer variants they came from — the
-        // same in every language, so no keys for them.
-        case .clearLight:
-            return "Clear Light"
-        case .clearDark:
-            return "Clear Dark"
         }
     }
 

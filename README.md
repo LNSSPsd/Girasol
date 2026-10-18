@@ -96,12 +96,17 @@ subscriptions, history and playlists, or continue without an account.
 
 ## Install
 
-Girasol is installed as an `.ipa` file with [TrollStore](https://github.com/opa334/TrollStore)
-(or with AppSync on a jailbroken device). There are no prebuilt releases yet: build the file
-yourself (see below), copy it to the iPhone and open it in TrollStore.
+Girasol is installed as an `.ipa` file with [TrollStore](https://github.com/opa334/TrollStore).
+There are no prebuilt releases yet: build the file yourself (see below), copy it to the
+iPhone and open it in TrollStore.
 
-> **Note:** for now the build still uses Opaline's name and app ID. On the phone it appears as
-> **Opaline** and replaces Opaline if you have it installed.
+**Coming from Opaline?** Girasol installs next to it as a separate app. The first time it
+starts, it offers to import everything from Opaline in one tap: settings, sign-ins, music
+and downloads (later, from Settings → Import from Opaline). Opaline itself is left as it
+was.
+
+For AppSync or other installers that keep apps sandboxed, there is a sandboxed build (see
+below). It works the same, except that it cannot import from Opaline.
 
 ## Build on Linux
 
@@ -120,15 +125,17 @@ directly with `SWIFT_TC=<toolchain>` and `SDKROOT=<sdk>` (the SDK folder must ke
 `iPhoneOS14.x.sdk` name: the build reads the version from it).
 
 ```bash
-make ipa                # builds build/Opaline_<version>.ipa
+make ipa                # builds build/Girasol_<version>.ipa (for TrollStore)
+make ipa SANDBOX=1      # builds build/Girasol_<version>_sandboxed.ipa
+make release            # builds both
 make ipa JOBS=8         # use 8 parallel jobs (the default is 16)
 ```
 
 The first build takes about a minute; after that, only changed files are rebuilt.
 
 To install from the iPhone over Wi-Fi, `make publish` builds the app and copies it, together
-with an install page, to `/srv/http/files/opaline/`. Run a web server on the computer that
-serves `/srv/http` on port 80, so the page is at `http://<the computer's IP>/files/opaline/`
+with an install page, to `/srv/http/files/girasol/`. Run a web server on the computer that
+serves `/srv/http` on port 80, so the page is at `http://<the computer's IP>/files/girasol/`
 (the install link expects that address). Open the page on the iPhone and tap **Install** to
 open the app in TrollStore.
 

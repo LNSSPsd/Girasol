@@ -38,7 +38,7 @@ def app_keys(info):
     """The INFOPLIST_KEY_* settings of the Opaline target, plus the icon
     and launch screen keys that the asset catalog and storyboard would
     have produced (neither can be compiled on Linux)."""
-    info.setdefault("CFBundleDisplayName", "Opaline")
+    info.setdefault("CFBundleDisplayName", "Girasol")
     info["UIApplicationSupportsIndirectInputEvents"] = True
     info["UISupportedInterfaceOrientations"] = ORIENTATIONS_PHONE
     info["UISupportedInterfaceOrientations~iphone"] = ORIENTATIONS_PHONE

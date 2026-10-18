@@ -1,4 +1,5 @@
 #import "OPMusicWebAccount.h"
+#import "../Common/OPKeychainGroup.h"
 #import <CommonCrypto/CommonDigest.h>
 #import <Security/Security.h>
 
@@ -55,11 +56,11 @@ static NSMutableDictionary<NSString *, NSHTTPCookie *> *sCookies;
 }
 
 + (NSDictionary *)keychainQuery {
-	return @{
+	return [OPKeychainGroup scoped:@{
 		(__bridge id)kSecClass : (__bridge id)kSecClassGenericPassword,
 		(__bridge id)kSecAttrService : OPService,
 		(__bridge id)kSecAttrAccount : OPAccount,
-	};
+	}];
 }
 
 /// Caller holds the lock.

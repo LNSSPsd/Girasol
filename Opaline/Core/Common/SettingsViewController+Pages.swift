@@ -64,7 +64,7 @@ extension SettingsViewController {
 
     /// Category rows push a child page.
     private var rootSections: [Section] {
-        [
+        var sections = [
             Section(
                 header: nil,
                 footer: nil,
@@ -86,6 +86,17 @@ extension SettingsViewController {
                 rows: [.aboutVersion, .aboutSystem, .aboutModel]
             )
         ]
+        if OpalineImportPrompt.isAvailable {
+            sections.insert(
+                Section(
+                    header: nil,
+                    footer: "Settings, sign-ins, music and downloads from Opaline on this iPhone.",
+                    rows: [.importOpaline]
+                ),
+                at: 1
+            )
+        }
+        return sections
     }
 
     private var appearanceSections: [Section] {

@@ -2,15 +2,25 @@ import Foundation
 import Security
 
 extension OAuthClient {
-    func saveToKeychain(_ tokens: OAuthTokens) {
-        guard let data = try? JSONEncoder().encode(tokens) else {
-            return
-        }
-        let query: [String: Any] = [
+    /// The token's item, in Girasol's own group (`OPKeychainGroup`): the app
+    /// can read Opaline's group too, where the same item may exist.
+    private func keychainQuery() -> [String: Any] {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: keychainAccount
         ]
+        if let group = OPKeychainGroup.own {
+            query[kSecAttrAccessGroup as String] = group
+        }
+        return query
+    }
+
+    func saveToKeychain(_ tokens: OAuthTokens) {
+        guard let data = try? JSONEncoder().encode(tokens) else {
+            return
+        }
+        let query = keychainQuery()
         SecItemDelete(query as CFDictionary)
         var add = query
         add[kSecValueData as String] = data
@@ -36,13 +46,9 @@ extension OAuthClient {
         AppLog.auth("keychain migrated to after-first-unlock")
     }
     func loadFromKeychain() -> OAuthTokens? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        var query = keychainQuery()
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: AnyObject?
         guard SecItemCopyMatching(
             query as CFDictionary,
@@ -58,11 +64,7 @@ extension OAuthClient {
         )
     }
     func deleteFromKeychain() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount
-        ]
+        let query = keychainQuery()
         SecItemDelete(query as CFDictionary)
     }
 }

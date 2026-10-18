@@ -24,6 +24,7 @@ final class SettingsViewController: UIViewController {
         case solverEndpoint
         case mainThreadWatchdog
         case shareLog
+        case importOpaline
         case creditsOpalineRepo, support
         case aboutVersion, aboutSystem, aboutModel
     }
@@ -338,6 +339,8 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             )
         case .shareLog:
             return makeDisclosureCell("settings.row.shareLog".localized)
+        case .importOpaline:
+            return makeDisclosureCell("Import from Opaline")
         case .creditsOpalineRepo:
             return makeDisclosureCell("Source code on GitHub")
         case .support:
@@ -428,6 +431,8 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         switch row {
         case .shareLog:
             shareDebugLog()
+        case .importOpaline:
+            OpalineImportPrompt.start(from: self)
         case .creditsOpalineRepo:
             if let url = URL(string: AppURLs.Credits.opaline) {
                 UIApplication.shared.open(url)
@@ -839,7 +844,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             return
         }
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("opaline_debug.log")
+            .appendingPathComponent("girasol_debug.log")
         try? data.write(to: tempURL)
         let activity = UIActivityViewController(
             activityItems: [tempURL],

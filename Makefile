@@ -1,7 +1,7 @@
 SWIFTLINT ?= swiftlint
 SWIFTFORMAT ?= swiftformat
 
-.PHONY: lint lint-fix analyze format format-check ipa publish clean
+.PHONY: lint lint-fix analyze format format-check ipa publish release clean
 
 lint:
 	$(SWIFTLINT) lint --strict
@@ -24,7 +24,7 @@ format-check:
 # Needs a theos tree with the Swift 5.8 iOS toolchain and an iPhoneOS SDK:
 #   $(THEOS)/toolchain/swift-5.8/linux/iphone/bin/{swiftc,ldid,bitcode_strip}
 #   $(THEOS)/sdks/iPhoneOS14.*.sdk
-# Output: build/Opaline_<version>.ipa, ad-hoc signed with ldid for AppSync /
+# Output: build/Girasol_<version>.ipa, ad-hoc signed with ldid for AppSync /
 # TrollStore installs.
 # `make publish` copies it to $(PUBLISH_DIR) with an index.html whose link
 # installs it through TrollStore.
@@ -41,15 +41,38 @@ SWIFT_TC       ?= $(THEOS)/toolchain/swift-5.8/linux/iphone
 SDKROOT        ?= $(firstword $(wildcard $(THEOS)/sdks/iPhoneOS14.*.sdk))
 SDK_VERSION    := $(patsubst iPhoneOS%.sdk,%,$(notdir $(SDKROOT)))
 MIN_OS         ?= 14.0
-BUNDLE_ID      ?= com.verback.YTLite
+BUNDLE_ID      ?= app.girasol
+# What Opaline (and this fork before its rename) was installed as: Girasol
+# imports its settings, sign-ins and files (OPOpalineImport).
+OPALINE_ID     ?= com.verback.YTLite
 VERSION        ?= 1.12.0
 BUILD_NUMBER   ?= 1
 TEAM_ID        := 4RAT6786W6
+# Opaline's Keychain items live in its default group, its application
+# identifier; an upstream build may carry another team id.
+OPALINE_KEYCHAIN_GROUP ?= $(TEAM_ID).$(OPALINE_ID)
+# SANDBOX=1: a sandboxed build (no TrollStore-only entitlements, e.g. for
+# AppSync or sideloading). It cannot read Opaline's data, so the import is
+# off; its IPA is named Girasol_<version>_sandboxed.ipa. Built only when
+# asked for, or by `make release` (both kinds).
+SANDBOX ?= 0
+ifeq ($(SANDBOX),1)
+OPALINE_IMPORT := NO
+IPA_SUFFIX     := _sandboxed
+ENTITLEMENTS_EXTRA :=
+else
+OPALINE_IMPORT := YES
+IPA_SUFFIX     :=
+ENTITLEMENTS_EXTRA := '<key>com.apple.private.security.no-sandbox</key><true/>' \
+	'<key>keychain-access-groups</key><array>' \
+	'<string>$(TEAM_ID).$(BUNDLE_ID)</string><string>$(OPALINE_KEYCHAIN_GROUP)</string>' \
+	'</array>'
+endif
 # Compiler threads, and parallel Objective-C compiles.
 JOBS           ?= 16
 MAKEFLAGS      += -j$(JOBS)
 PUBLISH_ROOT   ?= /srv/http/files
-PUBLISH_DIR    := $(PUBLISH_ROOT)/opaline
+PUBLISH_DIR    := $(PUBLISH_ROOT)/girasol
 LOCAL_IP       := $(shell ip addr | sed -n "s/.*inet \([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)[ \/].*/\1/p" | grep -v '^127\.' | head -1)
 COMMIT_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null)
 
@@ -86,8 +109,8 @@ SWIFTFLAGS += -O
 endif
 
 OUT       := build/linux
-APP       := $(OUT)/Payload/Opaline.app
-IPA       := build/Opaline_$(VERSION).ipa
+APP       := $(OUT)/Payload/Girasol.app
+IPA       := build/Girasol_$(VERSION)$(IPA_SUFFIX).ipa
 APP_SRCS  := $(shell find Opaline -name '*.swift')
 # Objective-C sources compile with clang and reach Swift through the
 # bridging header; their objects go straight to the linker, since swiftc
@@ -105,7 +128,9 @@ OBJCFLAGS := -target arm64-apple-ios$(MIN_OS) -isysroot $(SDKROOT) \
 # What only the Objective-C code uses, linked by name instead.
 OBJC_FRAMEWORKS := WebKit
 PLIST := python3 scripts/linux_info_plist.py --version $(VERSION) \
-	--build $(BUILD_NUMBER) --min-os $(MIN_OS) --sdk-version $(SDK_VERSION)
+	--build $(BUILD_NUMBER) --min-os $(MIN_OS) --sdk-version $(SDK_VERSION) \
+	--var OP_KEYCHAIN_GROUP=$(TEAM_ID).$(BUNDLE_ID) --var OP_OPALINE_ID=$(OPALINE_ID) \
+	--var OP_OPALINE_KEYCHAIN_GROUP=$(OPALINE_KEYCHAIN_GROUP) --var OP_OPALINE_IMPORT=$(OPALINE_IMPORT)
 
 $(OUT)/objc/%.o: %.m $(OBJC_HDRS) Makefile
 	@mkdir -p $(@D)
@@ -123,6 +148,11 @@ $(OUT)/Opaline: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
 	@if $(SWIFT_TC)/bin/otool -L $@ | grep -q AVFAudio.framework; then \
 		echo "error: $@ loads AVFAudio.framework, which iOS 14.3 does not have"; rm -f $@; exit 1; fi
 
+# no-sandbox (TrollStore: keeps the app's own data container) lets the
+# Opaline import read Opaline's container; the second Keychain group, its
+# sign-ins. Girasol's own items stay in the first group (OPKeychainGroup).
+# Rewritten every build: SANDBOX changes it without touching the Makefile.
+.PHONY: $(OUT)/app.entitlements
 $(OUT)/app.entitlements:
 	@mkdir -p $(@D)
 	printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -131,6 +161,7 @@ $(OUT)/app.entitlements:
 		'<key>application-identifier</key><string>$(TEAM_ID).$(BUNDLE_ID)</string>' \
 		'<key>com.apple.developer.team-identifier</key><string>$(TEAM_ID)</string>' \
 		'<key>get-task-allow</key><true/>' \
+		$(ENTITLEMENTS_EXTRA) \
 		'</dict></plist>' > $@
 
 # Packaging is cheap, so it always reruns.
@@ -142,7 +173,7 @@ ipa: $(OUT)/Opaline $(OUT)/app.entitlements
 		[ "$$d" = Opaline/Base.lproj ] || cp -r "$$d" $(APP)/; done
 	cp Opaline/Assets.xcassets/*.imageset/*.png Opaline/AltIcons/*.png $(APP)/
 	for f in $(APP)/*@1x.png; do mv "$$f" "$${f%@1x.png}.png"; done
-	set -e; I=Opaline/Assets.xcassets/AppIconOpaline.appiconset; \
+	set -e; I=Opaline/Assets.xcassets/AppIconGirasol.appiconset; \
 	for s in 20 29 40 60; do for x in 2 3; do \
 		cp $$I/Icon-$$s@$${x}x.png $(APP)/AppIcon$${s}x$$s@$${x}x.png; done; done; \
 	for s in 20 29 40 76; do \
@@ -150,26 +181,32 @@ ipa: $(OUT)/Opaline $(OUT)/app.entitlements
 		cp $$I/Icon-$$s@2x.png $(APP)/AppIcon$${s}x$$s@2x~ipad.png; done; \
 	cp $$I/Icon-83.5@2x.png $(APP)/AppIcon83.5x83.5@2x~ipad.png
 	$(PLIST) --source Opaline/Info.plist --output $(APP)/Info.plist \
-		--executable Opaline --bundle-id $(BUNDLE_ID)
+		--executable Girasol --bundle-id $(BUNDLE_ID)
 	printf 'APPL????' > $(APP)/PkgInfo
 	# Binaries and signatures; iOS 14 has the Swift runtime built in.
-	cp $(OUT)/Opaline $(APP)/Opaline
-	$(LDID) -S$(OUT)/app.entitlements $(APP)/Opaline
+	cp $(OUT)/Opaline $(APP)/Girasol
+	$(LDID) -S$(OUT)/app.entitlements $(APP)/Girasol
 	rm -f $(IPA)
 	cd $(OUT) && zip -qry $(CURDIR)/$(IPA) Payload
 	@echo "Built $(IPA)"
 
 publish: ipa
 	@mkdir -p $(PUBLISH_DIR)
-	cp $(IPA) $(PUBLISH_DIR)/Opaline.ipa
+	cp $(IPA) $(PUBLISH_DIR)/Girasol.ipa
 	@printf '%s\n' \
 		'<html><head><meta name=viewport content="width=device-width,initial-scale=1">' \
-		'<title>Opaline</title><style>a{font-size:80px}p{font-size:40px}</style></head><body>' \
-		'<a href="apple-magnifier://install?url=http%3A%2F%2F$(LOCAL_IP)%2Ffiles%2Fopaline%2FOpaline.ipa">Install</a>' \
-		'<p>Opaline $(VERSION) ($(COMMIT_HASH))</p>' \
+		'<title>Girasol</title><style>a{font-size:80px}p{font-size:40px}</style></head><body>' \
+		'<a href="apple-magnifier://install?url=http%3A%2F%2F$(LOCAL_IP)%2Ffiles%2Fgirasol%2FGirasol.ipa">Install</a>' \
+		'<p>Girasol $(VERSION) ($(COMMIT_HASH))</p>' \
 		'<p>Latest Update: $(shell date)</p></body></html>' \
 		> $(PUBLISH_DIR)/index.html
-	@echo "Published: http://$(LOCAL_IP)/files/opaline/  (tap Install -> TrollStore)"
+	@echo "Published: http://$(LOCAL_IP)/files/girasol/  (tap Install -> TrollStore)"
+
+# Both kinds, one after the other (they share the build tree; only the
+# Info.plist and the entitlements differ).
+release:
+	$(MAKE) ipa SANDBOX=0
+	$(MAKE) ipa SANDBOX=1
 
 clean:
-	rm -rf build/linux build/Opaline_*.ipa
+	rm -rf build/linux build/Opaline_*.ipa build/Girasol_*.ipa

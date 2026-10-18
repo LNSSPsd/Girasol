@@ -8,12 +8,19 @@ enum YouTubeLinkParser {
     /// e.g. `/shorts/VIDEOID`.
     private static let idPathKeywords: Set<String> = ["shorts", "live", "embed"]
 
+    /// The app's own link scheme, `girasol://`; `ytlite://` is what links
+    /// made before the rename (and Opaline's) use, still read the same way.
+    static func isAppLink(_ url: URL) -> Bool {
+        let scheme = url.scheme?.lowercased()
+        return scheme == "girasol" || scheme == "ytlite"
+    }
+
     static func videoId(from url: URL) -> String? {
         guard let host = url.host?.lowercased() else {
             return nil
         }
-        if url.scheme?.lowercased() == "ytlite" {
-            // ytlite://watch?v=VIDEOID — host is "watch" for this shape.
+        if isAppLink(url) {
+            // girasol://watch?v=VIDEOID — host is "watch" for this shape.
             return queryValue(url, name: "v")
         }
         guard isYouTubeHost(host) else {
@@ -51,12 +58,12 @@ enum YouTubeLinkParser {
 
     /// A shared Spotify playlist — `open.spotify.com/playlist/ID` (an
     /// `intl-xx/` prefix too), `spotify:playlist:ID`, or
-    /// `ytlite://spotify?playlist=ID` — which music mode opens to play or
+    /// `girasol://spotify?playlist=ID` — which music mode opens to play or
     /// import.
     static func spotifyPlaylistId(from url: URL) -> String? {
         let scheme = url.scheme?.lowercased()
         let id: String?
-        if scheme == "ytlite" {
+        if isAppLink(url) {
             id = url.host?.lowercased() == "spotify" ? queryValue(url, name: "playlist") : nil
         } else if scheme == "spotify" {
             let parts = url.absoluteString.split(separator: ":").map(String.init)
@@ -78,7 +85,7 @@ enum YouTubeLinkParser {
     /// The playlist a link points at — the `list` of a `/playlist` page, or
     /// the one a watch link carries alongside the video.
     static func playlistId(from url: URL) -> String? {
-        guard url.scheme?.lowercased() == "ytlite"
+        guard isAppLink(url)
             || (url.host.map { isYouTubeHost($0.lowercased()) } ?? false)
         else {
             return nil
@@ -87,7 +94,7 @@ enum YouTubeLinkParser {
     }
 
     /// Whether the link points at a short — `/shorts/ID`, or the `shorts=1`
-    /// a `ytlite://` link carries it over with. The watch screen and the
+    /// a `girasol://` link carries it over with. The watch screen and the
     /// vertical feed are different destinations, so the shape of the original
     /// link has to survive the trip through the deep link.
     static func isShort(_ url: URL) -> Bool {
