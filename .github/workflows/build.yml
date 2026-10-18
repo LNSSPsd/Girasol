@@ -35,7 +35,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The object cache is matched against what changed since its commit.
           fetch-depth: 0
@@ -65,7 +65,7 @@ jobs:
 
       - name: Toolchain and SDK cache
         id: toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.THEOS }}
           key: theos-swift-5.8-v2.3.0-${{ env.SDK }}
@@ -85,7 +85,7 @@ jobs:
           mv "$RUNNER_TEMP/sdks/$SDK" "$THEOS/sdks/"
 
       - name: Object cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.kind.outputs.out }}
           key: objects-${{ steps.kind.outputs.out }}-${{ github.sha }}
@@ -120,7 +120,7 @@ jobs:
           fi
           git rev-parse HEAD > "$OUT/.built-from"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Girasol-${{ steps.kind.outputs.version }}${{ steps.kind.outputs.release != 'true' && format('-debug-{0}', github.sha) || '' }}
           path: |
