@@ -9,6 +9,7 @@
 ![iOS 14](https://img.shields.io/badge/iOS-14-lightgrey?logo=apple)
 ![Built on Linux](https://img.shields.io/badge/built%20on-Linux-blue?logo=linux&logoColor=white)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
+[![Changes: CC0 1.0](https://img.shields.io/badge/changes-CC0%201.0-lightgrey)](LICENSES/CC0-1.0.txt)
 
 <!-- Screenshots: drop the images into screenshots/ under these names. -->
 <img src="screenshots/music-home.png" width="24%" alt="Music home">
