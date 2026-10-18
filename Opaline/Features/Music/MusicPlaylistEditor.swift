@@ -58,6 +58,7 @@ enum MusicPlaylistEditor {
                             return
                         }
                         AppLog.player("music: created playlist \(id) (\(privacy.rawValue))")
+                        MusicPlaylistPrivacy.note(id, privacy)
                         ToastView.show(
                             track == nil ? "Created \(title)" : "Added to new playlist \(title)",
                             in: presenter.view
@@ -83,6 +84,7 @@ enum MusicPlaylistEditor {
             ) { result in
                 DispatchQueue.main.async {
                     if case .success = result {
+                        MusicPlaylistPrivacy.note(playlist.id, privacy)
                         ToastView.show("Now \(privacy.title.lowercased())", in: presenter.view)
                     } else {
                         ToastView.show("Could not change who can see it", in: presenter.view, isError: true)

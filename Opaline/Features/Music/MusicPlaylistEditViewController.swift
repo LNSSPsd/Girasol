@@ -21,7 +21,7 @@ final class MusicPlaylistEditViewController: UITableViewController, UITextFieldD
     }
     private let titleField = UITextField()
     private let descriptionField = UITextField()
-    /// Nil: unchanged (YouTube does not tell an existing playlist's privacy).
+    /// Nil: unchanged. What it is now, when known, is ticked meanwhile.
     private var privacy: PlaylistPrivacy?
     private let onSaved: (Playlist?) -> Void
     private var isSaving = false
@@ -118,6 +118,7 @@ final class MusicPlaylistEditViewController: UITableViewController, UITextFieldD
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         Section(rawValue: section) == .privacy && existing != nil && privacy == nil
+            && existing.flatMap({ MusicPlaylistPrivacy.known($0.id) }) == nil
             ? "Leave unpicked to keep it as it is." : nil
     }
 
@@ -146,7 +147,8 @@ final class MusicPlaylistEditViewController: UITableViewController, UITextFieldD
             cell.textLabel?.text = option.title
             cell.textLabel?.textColor = theme.primaryText
             cell.tintColor = theme.accent
-            cell.accessoryType = option == privacy ? .checkmark : .none
+            let current = privacy ?? existing.flatMap { MusicPlaylistPrivacy.known($0.id) }
+            cell.accessoryType = option == current ? .checkmark : .none
             cell.editingAccessoryType = cell.accessoryType
             return cell
         case .songs:
@@ -277,6 +279,7 @@ final class MusicPlaylistEditViewController: UITableViewController, UITextFieldD
                     self.failed(MusicPlaylistEditor.createFailureMessage)
                     return
                 }
+                MusicPlaylistPrivacy.note(id, self.privacy ?? .privateList)
                 let created = Playlist(
                     id: id, title: title, description: description,
                     thumbnailURL: self.tracks.first?.thumbnailURL, itemCount: self.tracks.count
@@ -352,6 +355,9 @@ final class MusicPlaylistEditViewController: UITableViewController, UITextFieldD
                 guard case .success = result else {
                     self.failed("Could not save the changes")
                     return
+                }
+                if let privacy = self.privacy {
+                    MusicPlaylistPrivacy.note(playlist.id, privacy)
                 }
                 let saved = Playlist(
                     id: playlist.id, title: title,

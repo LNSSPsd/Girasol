@@ -310,6 +310,7 @@ final class MusicSpotifyViewController: MusicListViewController {
     private func finishImport(id: String, title: String, privacy: PlaylistPrivacy, added: Int, of total: Int) {
         AppLog.player("spotify playlist \(playlistId): imported \(added) of \(total) into \(id) (\(privacy.rawValue))")
         updateStatus()
+        MusicPlaylistPrivacy.note(id, privacy)
         let created = Playlist(
             id: id, title: title, description: privacy.title, thumbnailURL: nil, itemCount: added
         )

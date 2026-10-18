@@ -15,6 +15,8 @@ final class MusicCollectionViewController: MusicListViewController {
     private let artwork = ThumbnailImageView(frame: .zero)
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
+    /// Who can see it (`MusicPlaylistPrivacy`), for playlists.
+    private let privacyLabel = UILabel()
     private let playButton = UIButton(type: .system)
     private let shuffleButton = UIButton(type: .system)
     private let downloadButton = UIButton(type: .system)
@@ -110,6 +112,16 @@ final class MusicCollectionViewController: MusicListViewController {
             object: nil
         )
         installBarItems()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updatePrivacy),
+            name: MusicPlaylistPrivacy.didChangeNotification,
+            object: nil
+        )
+        updatePrivacy()
+        if MusicPlaylistPrivacy.applies(to: collection.id) {
+            MusicPlaylistPrivacy.refresh([collection.id], force: true)
+        }
         subtitleLabel.isUserInteractionEnabled = true
         subtitleLabel.addGestureRecognizer(
             UITapGestureRecognizer(target: self, action: #selector(subtitleTapped))
@@ -326,6 +338,35 @@ final class MusicCollectionViewController: MusicListViewController {
     }
 
     @objc
+    private func updatePrivacy() {
+        let privacy = MusicPlaylistPrivacy.known(collection.id)
+        privacyLabel.isHidden = privacy == nil
+        guard let privacy else {
+            sizeHeader()
+            return
+        }
+        let symbol: String
+        switch privacy {
+        case .publicList:
+            symbol = "globe"
+        case .unlisted:
+            symbol = "link"
+        case .privateList:
+            symbol = "lock.fill"
+        }
+        let text = NSMutableAttributedString()
+        if let image = UIImage(systemName: symbol)?.withTintColor(
+            ThemeManager.shared.secondaryText, renderingMode: .alwaysOriginal
+        ) {
+            text.append(NSAttributedString(attachment: NSTextAttachment(image: image)))
+            text.append(NSAttributedString(string: " "))
+        }
+        text.append(NSAttributedString(string: privacy.shortTitle))
+        privacyLabel.attributedText = text
+        sizeHeader()
+    }
+
+    @objc
     private func updateDownloadButton() {
         let states = tracks.map { MusicDownloads.state(of: $0.id) }
         let symbol: String
@@ -386,6 +427,10 @@ final class MusicCollectionViewController: MusicListViewController {
         subtitleLabel.textAlignment = .center
         // An album's artist line is a link (see `subtitleTapped`).
         subtitleLabel.textColor = isAlbum || albumRef != nil ? theme.accent : theme.secondaryText
+        privacyLabel.font = .systemFont(ofSize: 13)
+        privacyLabel.textAlignment = .center
+        privacyLabel.textColor = theme.secondaryText
+        privacyLabel.isHidden = true
         configure(playButton, title: " Play", symbol: "play.fill", action: #selector(playAll))
         configure(
             shuffleButton, title: " Shuffle", symbol: "shuffle", action: #selector(shuffleAll)
@@ -397,12 +442,12 @@ final class MusicCollectionViewController: MusicListViewController {
         let buttons = UIStackView(arrangedSubviews: [playButton, shuffleButton, downloadButton])
         buttons.spacing = 12
         buttons.distribution = .fillEqually
-        let stack = UIStackView(arrangedSubviews: [artwork, titleLabel, subtitleLabel, buttons])
+        let stack = UIStackView(arrangedSubviews: [artwork, titleLabel, subtitleLabel, privacyLabel, buttons])
         stack.axis = .vertical
         stack.alignment = .center
         stack.spacing = 8
         stack.setCustomSpacing(16, after: artwork)
-        stack.setCustomSpacing(16, after: subtitleLabel)
+        stack.setCustomSpacing(16, after: privacyLabel)
         stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([

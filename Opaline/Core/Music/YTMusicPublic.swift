@@ -779,6 +779,40 @@ enum YTMusicPublic {
         }.resume()
     }
 
+    /// Who can see a playlist, from youtube.com's page of it signed out: a
+    /// private one "does not exist" (an error alert, no contents), a
+    /// link-only one says `unlisted` in its microformat. Nil when it could
+    /// not be told (network).
+    static func playlistPrivacy(_ playlistId: String, completion: @escaping (PlaylistPrivacy?) -> Void) {
+        guard let url = URL(string: "https://www.youtube.com/youtubei/v1/browse?prettyPrint=false") else {
+            completion(nil)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "context": ["client": ["clientName": "WEB", "clientVersion": "2.20260301.00.00", "hl": "en"]],
+            "browseId": "VL\(playlistId)"
+        ])
+        session.dataTask(with: request) { data, response, _ in
+            guard (response as? HTTPURLResponse)?.statusCode == 200,
+                  let json = data.flatMap({ try? JSONSerialization.jsonObject(with: $0) as? [String: Any] })
+            else {
+                completion(nil)
+                return
+            }
+            if json["contents"] != nil {
+                let unlisted = json.digDict("microformat", "microformatDataRenderer")?["unlisted"] as? Bool
+                completion(unlisted == true ? .unlisted : .publicList)
+            } else if firstDict(named: "alertRenderer", in: json["alerts"] as Any)?["type"] as? String == "ERROR" {
+                completion(.privateList)
+            } else {
+                completion(nil)
+            }
+        }.resume()
+    }
+
     /// The raw contents of a playlist's public page, for its entry ids.
     static func playlistEntries(_ playlistId: String, completion: @escaping (Any?) -> Void) {
         post("browse", ["browseId": "VL\(playlistId)"], tag: "playlist(\(playlistId))") { json in

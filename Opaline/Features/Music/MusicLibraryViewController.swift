@@ -52,6 +52,12 @@ final class MusicLibraryViewController: MusicListViewController {
             name: MusicPlaylistEditor.didChangeNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(playerDidChange),
+            name: MusicPlaylistPrivacy.didChangeNotification,
+            object: nil
+        )
         title = "Library"
         installRootBarItems()
         let refresh = UIRefreshControl()
@@ -125,6 +131,7 @@ final class MusicLibraryViewController: MusicListViewController {
             self.fetchedPlaylists = playlists.filter { $0.id != "LM" }
             self.reconcile()
             self.tableView.reloadData()
+            MusicPlaylistPrivacy.refresh(self.fetchedPlaylists.map(\.id))
         }
     }
 
@@ -255,9 +262,12 @@ final class MusicLibraryViewController: MusicListViewController {
             return
         }
         let collection = collections(in: indexPath.section)[indexPath.row]
+        let privacy = Section(rawValue: indexPath.section) == .playlists
+            ? MusicPlaylistPrivacy.known(collection.id) : nil
         (cell as? MusicItemCell)?.configure(
             title: collection.title,
-            subtitle: collection.description,
+            subtitle: [privacy?.shortTitle, collection.description]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "),
             artworkURL: collection.thumbnailURL
         )
     }
