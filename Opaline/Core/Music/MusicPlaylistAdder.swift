@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// "Add to playlist" for music mode. The first time in a session it asks

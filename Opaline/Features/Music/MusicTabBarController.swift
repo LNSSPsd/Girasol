@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Music mode's window root, the peer of the video mode's tab bar: Home and

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// An artist: Play (their songs shuffled, then endless radio), Radio, top

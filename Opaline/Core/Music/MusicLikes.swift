@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Which songs are liked, for the Like toggle: YouTube Music's Liked songs

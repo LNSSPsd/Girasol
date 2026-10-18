@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// The app-wide switch between Opaline's video UI and music mode: a music

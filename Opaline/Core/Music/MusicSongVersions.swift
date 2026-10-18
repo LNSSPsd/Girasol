@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Plays songs, not their music videos. YouTube Music lists a track's

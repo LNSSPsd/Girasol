@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// The Video | Music selector. The two modes are peers, so the same control

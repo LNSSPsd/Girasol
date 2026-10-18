@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Up next: what plays now, the user's queue, then the rest of the album or

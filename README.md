@@ -127,7 +127,7 @@ directly with `SWIFT_TC=<toolchain>` and `SDKROOT=<sdk>` (the SDK folder must ke
 ```bash
 make ipa                # builds build/Girasol_<version>.ipa (for TrollStore)
 make ipa SANDBOX=1      # builds build/Girasol_<version>_sandboxed.ipa
-make release            # builds both
+make release            # builds both (GitHub Actions does this for a v* tag)
 make ipa JOBS=8         # use 8 parallel jobs (the default is 16)
 ```
 
@@ -181,6 +181,7 @@ to Google, YouTube or Spotify.
 be released under GPLv3, with its source code.
 
 The changes Girasol makes to Opaline are also dedicated to the public domain under
-[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): you may use that code in any way,
-without conditions. Opaline's own code stays under GPLv3 only, so the app as a whole, and any
-part that includes Opaline's code, remains GPLv3.
+[CC0 1.0](LICENSES/CC0-1.0.txt): you may use that code in any way, without conditions. Files
+that are entirely Girasol's start with `SPDX-License-Identifier: CC0-1.0`. Opaline's own code
+stays under GPLv3 only, so the app as a whole, and any part that includes Opaline's code,
+remains GPLv3.

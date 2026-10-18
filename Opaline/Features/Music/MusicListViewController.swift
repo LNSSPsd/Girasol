@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Shared shell of the music screens: a themed plain table of `MusicItemCell`

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Who can see each of the user's playlists, shown in Library and on the

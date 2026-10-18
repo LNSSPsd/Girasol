@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Library → Downloads → Storage: what music downloads take, in all and per

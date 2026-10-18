@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPLyricsViewController.h"
 #import "OPLyricsView.h"
 #import "../../Core/Music/OPLyrics.h"

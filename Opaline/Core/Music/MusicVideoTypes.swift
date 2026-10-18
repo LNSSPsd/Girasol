@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// YouTube's own "this is music" mark: watch links to music carry a

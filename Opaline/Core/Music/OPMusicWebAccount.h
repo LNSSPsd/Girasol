@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN

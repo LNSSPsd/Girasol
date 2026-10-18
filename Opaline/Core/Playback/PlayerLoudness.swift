@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// How much louder than YouTube's loudness target each video is, in dB, as

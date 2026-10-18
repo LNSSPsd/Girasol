@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// The YouTube Music library: liked albums, then Liked songs and the saved

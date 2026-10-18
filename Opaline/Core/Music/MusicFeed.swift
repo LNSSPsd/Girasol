@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// One row of the music home feed: a titled shelf of albums, playlists and

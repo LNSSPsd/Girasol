@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// The "…" menu of a song: queue, playlists, like, download.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPMusicSettingsViewController.h"
 #import "../../Core/Music/OPMusicSettings.h"
 #import "../../Core/Music/OPMusicWebAccount.h"

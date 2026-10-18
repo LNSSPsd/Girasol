@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPMusicSettings.h"
 
 static NSString *const OPCacheNextKey = @"music_cacheNext";

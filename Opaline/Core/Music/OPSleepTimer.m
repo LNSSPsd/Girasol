@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPSleepTimer.h"
 
 NSNotificationName const OPSleepTimerDidFireNotification = @"OPSleepTimerDidFireNotification";

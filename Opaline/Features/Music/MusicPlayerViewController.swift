@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Full-screen player: artwork, title and artist, a scrubber, transport,

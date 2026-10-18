@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Listen again, built the way YouTube Music describes it: songs you play

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 // Objective-C parts of Opaline, visible to Swift (see the Makefile).
 #import "Core/Music/OPLyrics.h"
 #import "Features/Music/OPLyricsView.h"

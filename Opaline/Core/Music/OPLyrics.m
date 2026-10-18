@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPLyrics.h"
 
 static NSString *const OPLyricsHost = @"https://lrclib.net";

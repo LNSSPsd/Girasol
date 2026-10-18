@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Music home: Speed dial (the albums and playlists played most, lately),

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// Spotify's share sheet hands its "Give this playlist a listen: …" text

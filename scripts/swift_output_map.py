@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: CC0-1.0
 """Writes the output file map for the app's incremental Swift build.
 
 Usage: swift_output_map.py <obj dir> <source>...  (sources absolute)

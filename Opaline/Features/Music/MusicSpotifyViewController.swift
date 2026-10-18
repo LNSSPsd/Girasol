@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// A shared Spotify playlist, its tracks found on YouTube Music

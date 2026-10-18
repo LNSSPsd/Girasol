@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Finds a Spotify track's song on YouTube Music, through its song search

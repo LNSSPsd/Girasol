@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPActionToast.h"
 
 /// Only one at a time: a new toast replaces the one on screen.

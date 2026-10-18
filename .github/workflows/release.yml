@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: CC0-1.0
+# Builds both IPAs on Linux, as `make release` does locally: the TrollStore
+# build (Girasol_<version>.ipa) and the sandboxed one
+# (Girasol_<version>_sandboxed.ipa). A pushed tag `v<version>` publishes them
+# as a GitHub release of that version; a manual run only keeps them as
+# workflow artifacts.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # Theos's layout, without Theos: the Makefile only needs these two.
+  THEOS: ${{ github.workspace }}/../theos
+  # kabiroberai/swift-toolchain-linux v2.3.0 (Swift 5.8, built for 22.04);
+  # the archive unpacks to linux/{host,iphone}.
+  TOOLCHAIN_URL: https://github.com/kabiroberai/swift-toolchain-linux/releases/download/v2.3.0/swift-5.8-ubuntu22.04.tar.xz
+  # The iOS 14 SDK: a newer one builds an app that crashes on iOS 14.
+  SDK: iPhoneOS14.5.sdk
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 zip xz-utils libxml2 libz3-4 libncurses6 libedit2 libcurl4
+
+      - name: Toolchain and SDK cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.THEOS }}
+          key: theos-swift-5.8-v2.3.0-${{ env.SDK }}
+
+      - name: Toolchain
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$THEOS/toolchain/swift-5.8"
+          curl -fsSL "$TOOLCHAIN_URL" | tar -xJ -C "$THEOS/toolchain/swift-5.8"
+
+      - name: SDK
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set "$SDK"
+          mkdir -p "$THEOS/sdks"
+          mv "$RUNNER_TEMP/sdks/$SDK" "$THEOS/sdks/"
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "args=VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build both IPAs
+        run: make release JOBS="$(nproc)" ${{ steps.version.outputs.args }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Girasol
+          path: build/Girasol_*.ipa
+
+      - name: GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/Girasol_*.ipa \
+            --title "Girasol ${GITHUB_REF_NAME#v}" --generate-notes

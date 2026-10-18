@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPMusicWebAccount.h"
 #import "../Common/OPKeychainGroup.h"
 #import <CommonCrypto/CommonDigest.h>

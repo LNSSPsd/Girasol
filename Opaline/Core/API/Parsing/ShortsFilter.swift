@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Where Shorts may appear in this fork: the Subscriptions feed (a short a

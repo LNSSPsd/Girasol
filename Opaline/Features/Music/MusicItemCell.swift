@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// The one row style of music mode: artwork (or a track number), two lines of

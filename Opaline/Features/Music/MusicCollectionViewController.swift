@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import UIKit
 
 /// An album or playlist: artwork, title, Play / Shuffle, and its tracks.

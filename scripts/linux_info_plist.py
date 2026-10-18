@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: CC0-1.0
 """Write a bundle's final Info.plist for the Linux build (see Makefile).
 
 Xcode builds the plist from the target's INFOPLIST_FILE plus the

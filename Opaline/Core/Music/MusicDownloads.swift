@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import AVFoundation
 
 /// Saving music for offline: audio-only downloads through the app's

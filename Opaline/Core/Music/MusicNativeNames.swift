@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 import Foundation
 
 /// Japanese names of artists and albums, by their browse id ("UC…" →

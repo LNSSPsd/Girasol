@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPSpotifyPlaylist.h"
 
 /// The embed page is served to browsers; this iOS version's Safari is what

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: CC0-1.0
 #import "OPMusicWebSignInViewController.h"
 #import "../../Core/Music/OPMusicWebAccount.h"
 @import WebKit;

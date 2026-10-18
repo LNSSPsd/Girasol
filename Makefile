@@ -45,7 +45,7 @@ BUNDLE_ID      ?= app.girasol
 # What Opaline (and this fork before its rename) was installed as: Girasol
 # imports its settings, sign-ins and files (OPOpalineImport).
 OPALINE_ID     ?= com.verback.YTLite
-VERSION        ?= 1.12.0
+VERSION        ?= 1.0.0
 BUILD_NUMBER   ?= 1
 TEAM_ID        := 4RAT6786W6
 # Opaline's Keychain items live in its default group, its application
