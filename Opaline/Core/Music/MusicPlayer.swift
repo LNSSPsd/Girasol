@@ -184,7 +184,19 @@ final class MusicPlayer: NSObject {
     func artworkURL(for video: Video?) -> URL? {
         let fromAlbum = video.map { track in context.contains { $0.id == track.id } } ?? false
         let album = fromAlbum ? collectionArtworkURL : nil
-        return URL(string: album ?? video?.thumbnailURL ?? "")
+        return URL(string: Self.fullSize(album ?? video?.thumbnailURL ?? ""))
+    }
+
+    /// A track keeps the thumbnail of the list it came from, and YouTube
+    /// Music's lists ask for 60–120 px ("…=w120-h120-l90-rj"): blurry in
+    /// the full player. Google's image server makes any size the URL asks.
+    static func fullSize(_ url: String) -> String {
+        guard url.contains("googleusercontent.com") else {
+            return url
+        }
+        return url.replacingOccurrences(
+            of: "=(w\\d+-h\\d+|s\\d+)", with: "=w720-h720", options: .regularExpression
+        )
     }
 
     override private init() {
