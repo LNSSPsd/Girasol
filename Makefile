@@ -45,6 +45,20 @@ BUNDLE_ID      ?= app.girasol
 # What Opaline (and this fork before its rename) was installed as: Girasol
 # imports its settings, sign-ins and files (OPOpalineImport).
 OPALINE_ID     ?= com.verback.YTLite
+# Untracked local settings (e.g. USE_UPSTREAM_SOLVER = 1); CI has none.
+-include local.mk
+
+# USE_UPSTREAM_SOLVER=1: the solver server Opaline's developer runs becomes
+# the default (Settings → Debug → Solver server can always name another).
+# Off by default and never in releases or CI: it is their server.
+USE_UPSTREAM_SOLVER ?= 0
+UPSTREAM_SOLVER := https://ytlite-solver.wonderfulpond-77505dfd.westus2.azurecontainerapps.io
+ifeq ($(USE_UPSTREAM_SOLVER),1)
+DEFAULT_SOLVER := $(UPSTREAM_SOLVER)
+else
+DEFAULT_SOLVER :=
+endif
+
 # The version lives in VERSION; CI publishes a release whenever it names one
 # that has none yet (.github/workflows/build.yml).
 VERSION        ?= $(strip $(shell cat VERSION))
@@ -138,7 +152,8 @@ OBJC_FRAMEWORKS := WebKit
 PLIST := python3 scripts/linux_info_plist.py --version $(VERSION) \
 	--build $(BUILD_NUMBER) --min-os $(MIN_OS) --sdk-version $(SDK_VERSION) \
 	--var OP_KEYCHAIN_GROUP=$(TEAM_ID).$(BUNDLE_ID) --var OP_OPALINE_ID=$(OPALINE_ID) \
-	--var OP_OPALINE_KEYCHAIN_GROUP=$(OPALINE_KEYCHAIN_GROUP) --var OP_OPALINE_IMPORT=$(OPALINE_IMPORT)
+	--var OP_OPALINE_KEYCHAIN_GROUP=$(OPALINE_KEYCHAIN_GROUP) --var OP_OPALINE_IMPORT=$(OPALINE_IMPORT) \
+	--var OP_DEFAULT_SOLVER=$(DEFAULT_SOLVER)
 
 $(OUT)/objc/%.o: %.m $(OBJC_HDRS) Makefile
 	@mkdir -p $(@D)
@@ -213,8 +228,8 @@ publish: ipa
 # Both kinds, one after the other (they share the build tree; only the
 # Info.plist and the entitlements differ).
 release:
-	$(MAKE) ipa SANDBOX=0
-	$(MAKE) ipa SANDBOX=1
+	$(MAKE) ipa SANDBOX=0 USE_UPSTREAM_SOLVER=0
+	$(MAKE) ipa SANDBOX=1 USE_UPSTREAM_SOLVER=0
 
 clean:
 	rm -rf build/linux build/linux_debug build/Opaline_*.ipa build/Girasol_*.ipa

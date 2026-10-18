@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="screenshots/icon.png" width="128" alt="">
+<img src="Opaline/Assets.xcassets/AppIconGirasol.appiconset/Icon-1024.png" width="128" alt="">
 
 # Girasol
 
@@ -155,9 +155,9 @@ Girasol has no ads, analytics or tracking. It connects to:
 - **Spotify**, only when you open a Spotify playlist link, to read that playlist.
 - **SponsorBlock**, which receives the ID of the video you are watching, if SponsorBlock is
   on.
-- **A server run by Opaline's developer**, used only by one of the backup ways of playing a
-  video. It receives a technical value from YouTube's player, nothing about you or what you
-  watch. Normal playback does not use it.
+- **A solver server, only if you set one** (Settings → Debug → Solver server). One of the
+  backup ways of playing a video can use it; it receives a technical value from YouTube's
+  player, nothing about you or what you watch. Released builds have none set.
 
 ## Reporting problems
 

@@ -16,6 +16,7 @@ xcuserdata/
 
 # Local build config
 Config/Local.xcconfig
+local.mk
 
 # AI/Agent configs
 .claude/

@@ -41,12 +41,15 @@ enum AppURLs {
         static let token      = "https://www.youtube.com/o/oauth2/token"
     }
 
-    /// The deployed `solver-server` (n-solve + GVS pot mint). Only the base URL
-    /// (host) is configured; the app derives `/solve` and `/get_pot` from it.
+    /// The `solver-server` (n-solve + GVS pot mint). Only the base URL (host)
+    /// is configured; the app derives `/solve` and `/get_pot` from it.
     /// Runtime override: `Debug.serverBaseURL` (empty = the built-in default).
+    /// The default is empty — no server, its users fail over — unless the
+    /// build names one (Info.plist `OPDefaultSolverServer`, the Makefile's
+    /// USE_UPSTREAM_SOLVER: Opaline's developer's server, local builds only).
     enum SolverServer {
         static let defaultBaseURL =
-            "https://ytlite-solver.wonderfulpond-77505dfd.westus2.azurecontainerapps.io"
+            Bundle.main.object(forInfoDictionaryKey: "OPDefaultSolverServer") as? String ?? ""
 
         /// The effective base URL — the runtime override if set, else the
         /// default — with any trailing slash trimmed.

@@ -74,6 +74,9 @@ final class SettingsViewController: UIViewController {
             forKey: UserDefaultsKeys.Debug.serverBaseURL
         )
         let isCustom = custom?.isEmpty == false
+        guard !AppURLs.SolverServer.baseURL.isEmpty else {
+            return "Off"
+        }
         return AppURLs.SolverServer.baseURL
             + (isCustom ? "" : "settings.solver.defaultSuffix".localized)
     }

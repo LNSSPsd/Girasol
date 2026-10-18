@@ -90,6 +90,10 @@
 	<string>$(OP_OPALINE_KEYCHAIN_GROUP)</string>
 	<key>OPOpalineImport</key>
 	<string>$(OP_OPALINE_IMPORT)</string>
+	<!-- The default solver server: empty unless built with
+	     USE_UPSTREAM_SOLVER=1 (AppURLs.SolverServer). -->
+	<key>OPDefaultSolverServer</key>
+	<string>$(OP_DEFAULT_SOLVER)</string>
 	<!-- The system share sheet offers "Save Video", which writes to Photos.
 	     Without this key iOS kills the app the moment that item is tapped.
 	     English in every language on purpose: the official app carries no
