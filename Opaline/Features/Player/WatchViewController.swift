@@ -93,11 +93,6 @@ final class WatchViewController: UIViewController {
     var backgroundEnteredAt: Date?, savedPlayerForBackground: AVPlayer?
     /// Audio-only was switched on by leaving the app, not by the user.
     var isBackgroundAudioOnly = false
-    /// Leaving the app capped the item onto its audio-only variant (the
-    /// seamless way); `backgroundCapGeneration` retires checks from an
-    /// earlier trip to the background.
-    var isBackgroundCapped = false, backgroundCapGeneration = 0
-    var backgroundVariantObserver: NSObjectProtocol?, foregroundAt: Date?
     var isRecoveringPlayback = false, hasSeenPlaybackError = false
     /// Frozen during a recovery seek: a fresh item's zeroed clock must not
     /// overwrite where the user actually was.

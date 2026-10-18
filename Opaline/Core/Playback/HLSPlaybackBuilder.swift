@@ -286,11 +286,7 @@ private extension HLSPlaybackBuilder {
                 + audioPeak,
             codecs: codecs,
             resolution: "\(width)x\(height)",
-            uris: uris,
-            // AVPlayer fetches these segments itself, so on the audio variant
-            // no video is downloaded. (SABR's fetcher pulls both regardless;
-            // it keeps the rebuild.)
-            audioOnly: (audFmt.codecs, audioPeak)
+            uris: uris
         )
         loader.register(path: "master.m3u8", content: mainPl)
         let audioOnlyPl = HLSGenerator.audioOnlyMainPlaylist(
