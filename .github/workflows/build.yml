@@ -1,0 +1,133 @@
+# SPDX-License-Identifier: CC0-1.0
+# Every push to main builds Girasol on Linux, as locally:
+# - VERSION names a version with no GitHub release yet → `make release`
+#   (Girasol_<v>.ipa for TrollStore, Girasol_<v>_sandboxed.ipa) and a
+#   release `v<v>` with both, which creates the tag;
+# - otherwise → a debug IPA (`make ipa DEBUG=1`), kept as a download on the
+#   run.
+# Cached: the toolchain and SDK, and each build kind's object files.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Theos's layout, without Theos: the Makefile only needs these two.
+  THEOS: ${{ github.workspace }}/../theos
+  # kabiroberai/swift-toolchain-linux v2.3.0 (Swift 5.8, built for 22.04);
+  # the archive unpacks to linux/{host,iphone} (iphone uses host's libraries).
+  TOOLCHAIN_URL: https://github.com/kabiroberai/swift-toolchain-linux/releases/download/v2.3.0/swift-5.8-ubuntu22.04.tar.xz
+  # The iOS 14 SDK: a newer one builds an app that crashes on iOS 14.
+  SDK: iPhoneOS14.5.sdk
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The object cache is matched against what changed since its commit.
+          fetch-depth: 0
+
+      - name: Release or debug
+        id: kind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" > /dev/null 2>&1; then
+            echo "Release v$version exists: debug build"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "out=build/linux_debug" >> "$GITHUB_OUTPUT"
+          else
+            echo "No release v$version yet: release build"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "out=build/linux" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 zip xz-utils libxml2 libz3-4 libncurses6 libedit2 libcurl4
+
+      - name: Toolchain and SDK cache
+        id: toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.THEOS }}
+          key: theos-swift-5.8-v2.3.0-${{ env.SDK }}
+
+      - name: Toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$THEOS/toolchain/swift-5.8"
+          curl -fsSL "$TOOLCHAIN_URL" | tar -xJ -C "$THEOS/toolchain/swift-5.8"
+
+      - name: SDK
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set "$SDK"
+          mkdir -p "$THEOS/sdks"
+          mv "$RUNNER_TEMP/sdks/$SDK" "$THEOS/sdks/"
+
+      - name: Object cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.kind.outputs.out }}
+          key: objects-${{ steps.kind.outputs.out }}-${{ github.sha }}
+          restore-keys: objects-${{ steps.kind.outputs.out }}-
+
+      # A checkout stamps every file "now", so make and swiftc would rebuild
+      # everything. Instead: one fixed old time for all files, and "now" for
+      # those changed since the commit the cached objects were built from —
+      # exactly what has to recompile. No known commit: a clean build.
+      - name: File times
+        env:
+          OUT: ${{ steps.kind.outputs.out }}
+        run: |
+          git ls-files -z | xargs -0 touch -c -h -d '2020-01-01 00:00:00'
+          built=$(cat "$OUT/.built-from" 2>/dev/null || true)
+          if [ -n "$built" ] && git cat-file -e "$built^{commit}" 2>/dev/null; then
+            echo "Objects from $built; recompiling what changed since"
+            git diff --name-only -z "$built" HEAD | xargs -0 -r touch -c -h
+          else
+            echo "No usable object cache: clean build"
+            rm -rf "$OUT"
+          fi
+
+      - name: Build
+        env:
+          OUT: ${{ steps.kind.outputs.out }}
+        run: |
+          if [ "${{ steps.kind.outputs.release }}" = true ]; then
+            make release JOBS="$(nproc)"
+          else
+            make ipa DEBUG=1 JOBS="$(nproc)"
+          fi
+          git rev-parse HEAD > "$OUT/.built-from"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Girasol-${{ steps.kind.outputs.version }}${{ steps.kind.outputs.release != 'true' && format('-debug-{0}', github.sha) || '' }}
+          path: build/Girasol_*.ipa
+
+      - name: GitHub release
+        if: steps.kind.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.kind.outputs.version }}
+        run: |
+          gh release create "v$VERSION" build/Girasol_"$VERSION".ipa build/Girasol_"$VERSION"_sandboxed.ipa \
+            --target "$GITHUB_SHA" --title "Girasol $VERSION" --generate-notes

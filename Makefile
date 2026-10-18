@@ -45,7 +45,9 @@ BUNDLE_ID      ?= app.girasol
 # What Opaline (and this fork before its rename) was installed as: Girasol
 # imports its settings, sign-ins and files (OPOpalineImport).
 OPALINE_ID     ?= com.verback.YTLite
-VERSION        ?= 1.0.0
+# The version lives in VERSION; CI publishes a release whenever it names one
+# that has none yet (.github/workflows/build.yml).
+VERSION        ?= $(strip $(shell cat VERSION))
 BUILD_NUMBER   ?= 1
 TEAM_ID        := 4RAT6786W6
 # Opaline's Keychain items live in its default group, its application
@@ -102,15 +104,21 @@ else
 APP_SWIFTMODE = -incremental -enable-batch-mode -j $(JOBS) \
 	-output-file-map $(CURDIR)/$(OUT)/obj-app/files.json
 endif
+# DEBUG=1: unoptimized; its objects go to their own folder (an incremental
+# build never mixes them with optimized ones) and the IPA is named
+# …_debug.ipa. No -g: it makes swiftc run dsymutil after linking, which the
+# toolchain does not have (the binary is not stripped, so crash logs still
+# name functions).
 ifeq ($(DEBUG),1)
-SWIFTFLAGS += -Onone -g -DDEBUG
+SWIFTFLAGS += -Onone -DDEBUG
+DEBUG_SUFFIX := _debug
 else
 SWIFTFLAGS += -O
 endif
 
-OUT       := build/linux
+OUT       := build/linux$(DEBUG_SUFFIX)
 APP       := $(OUT)/Payload/Girasol.app
-IPA       := build/Girasol_$(VERSION)$(IPA_SUFFIX).ipa
+IPA       := build/Girasol_$(VERSION)$(IPA_SUFFIX)$(DEBUG_SUFFIX).ipa
 APP_SRCS  := $(shell find Opaline -name '*.swift')
 # Objective-C sources compile with clang and reach Swift through the
 # bridging header; their objects go straight to the linker, since swiftc
@@ -209,4 +217,4 @@ release:
 	$(MAKE) ipa SANDBOX=1
 
 clean:
-	rm -rf build/linux build/Opaline_*.ipa build/Girasol_*.ipa
+	rm -rf build/linux build/linux_debug build/Opaline_*.ipa build/Girasol_*.ipa

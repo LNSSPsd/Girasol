@@ -127,9 +127,14 @@ directly with `SWIFT_TC=<toolchain>` and `SDKROOT=<sdk>` (the SDK folder must ke
 ```bash
 make ipa                # builds build/Girasol_<version>.ipa (for TrollStore)
 make ipa SANDBOX=1      # builds build/Girasol_<version>_sandboxed.ipa
-make release            # builds both (GitHub Actions does this for a v* tag)
+make release            # builds both
+make ipa DEBUG=1        # an unoptimized build, Girasol_<version>_debug.ipa
 make ipa JOBS=8         # use 8 parallel jobs (the default is 16)
 ```
+
+The version comes from the `VERSION` file. On GitHub, every push to `main` is built
+(`.github/workflows/build.yml`): when `VERSION` names a version that has no release yet, both
+IPAs are built and published as that release; otherwise a debug IPA is attached to the run.
 
 The first build takes about a minute; after that, only changed files are rebuilt.
 
