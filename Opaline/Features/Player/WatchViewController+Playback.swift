@@ -29,6 +29,13 @@ extension WatchViewController {
         guard !pageLoadToken.isCancelled else {
             return
         }
+        if handsOverNextItem {
+            handsOverNextItem = false
+            if let playing = videoPlayerView?.player, playing.currentItem != nil {
+                handOver(to: item, from: playing)
+                return
+            }
+        }
         if let saved = savedPlayerForBackground {
             savedPlayerForBackground = nil
             attachToExistingPlayer(
@@ -40,7 +47,6 @@ extension WatchViewController {
         playerSpinner.stopAnimating()
         playerStatusLabel.isHidden = true
         PlaybackBufferPolicy.configure(item: item)
-        capForBackgroundIfNeeded(item)
         startObservingPlayerItem(item)
         let player = AVPlayer(playerItem: item)
         PlaybackBufferPolicy.configure(
@@ -64,7 +70,6 @@ extension WatchViewController {
             stopObservingPlayerItem(old)
         }
         PlaybackBufferPolicy.configure(item: item)
-        capForBackgroundIfNeeded(item)
         startObservingPlayerItem(item)
         player.replaceCurrentItem(with: item)
         // A quality switch made in the background left its "Loading…" up.

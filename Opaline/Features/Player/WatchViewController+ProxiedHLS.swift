@@ -31,6 +31,10 @@ extension WatchViewController {
         _ prepared: PreparedPlayback,
         resumeAt: CMTime? = nil
     ) {
+        // Read before `attachPlayer` takes it: a handed-over item is started
+        // where playback stands, and a resume seek would go to the player
+        // still playing.
+        let handsOver = handsOverNextItem
         activeResourceLoader = prepared.resourceLoader
         preparedDuration = prepared.duration ?? preparedDuration
         // An item the source already opened at the playhead needs no seek, and
@@ -51,7 +55,7 @@ extension WatchViewController {
             available: playbackFacade.activeVideoSource?.availableQualities
                 .contains { $0.id == AudioOnlyMode.qualityID } ?? false
         )
-        if let resumeAt, CMTimeGetSeconds(resumeAt) > 1 {
+        if !handsOver, let resumeAt, CMTimeGetSeconds(resumeAt) > 1 {
             pendingResumeSeek = resumeAt
         }
     }

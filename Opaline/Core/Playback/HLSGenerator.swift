@@ -125,25 +125,12 @@ enum HLSGenerator {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    /// An audio-only variant listed after the video one: capping the item's
-    /// peak bit rate below the video variant moves AVPlayer onto it within
-    /// the same item. Which way of writing it AVPlayer accepts is probed on
-    /// the device (`HLSAudioVariant`).
-    struct AudioOnlyVariant {
-        let codecs: String
-        let bandwidth: Int
-        let uri: String
-        /// `AUDIO="audio"`: the variant names the video's audio group too.
-        let joinsGroup: Bool
-    }
-
     /// Generate a main playlist with video and audio.
     static func mainPlaylist(
         bandwidth: Int,
         codecs: String,
         resolution: String,
-        uris: PlaylistURIs,
-        audioOnly: AudioOnlyVariant? = nil
+        uris: PlaylistURIs
     ) -> String {
         var lines: [String] = []
         lines.append("#EXTM3U")
@@ -161,14 +148,6 @@ enum HLSGenerator {
             + ",AUDIO=\"audio\""
         lines.append(streamInf)
         lines.append(uris.video)
-        if let audioOnly {
-            lines.append(
-                "#EXT-X-STREAM-INF:BANDWIDTH=\(audioOnly.bandwidth)"
-                    + ",CODECS=\"\(audioOnly.codecs)\""
-                    + (audioOnly.joinsGroup ? ",AUDIO=\"audio\"" : "")
-            )
-            lines.append(audioOnly.uri)
-        }
         return lines.joined(separator: "\n") + "\n"
     }
 

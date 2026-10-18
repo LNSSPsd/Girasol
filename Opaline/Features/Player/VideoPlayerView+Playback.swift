@@ -37,6 +37,22 @@ extension VideoPlayerView {
         duration = 0
     }
 
+    /// A player that takes over from the playing one in step
+    /// (`WatchViewController+Handover`): the layer follows only if it is
+    /// attached (in the background it stays detached until activation).
+    func handOver(to newPlayer: AVPlayer) {
+        removePeriodicObserver()
+        removePlayerObservers()
+        player = newPlayer
+        if playerLayer.player != nil {
+            playerLayer.player = newPlayer
+        }
+        addPeriodicObserver()
+        addPlayerObservers()
+        updatePlayPauseIcon()
+        duration = 0
+    }
+
     func detach() {
         removePeriodicObserver()
         removePlayerObservers()
