@@ -224,11 +224,6 @@ that you can attach to a bug report.
 - [LRCLIB](https://lrclib.net) and NetEase Cloud Music, for lyrics.
 - [SponsorBlock](https://sponsor.ajay.app), for sponsor segments.
 
-## Legal
-
-For personal and educational use. Girasol is not affiliated with, endorsed by or connected
-to Google, YouTube or Spotify.
-
 ## License
 
 [GNU General Public License v3.0](LICENSE), like Opaline. Anything based on Girasol must also
