@@ -130,9 +130,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         BackgroundPlaybackService.apply()
         application.beginReceivingRemoteControlEvents()
         configureLegacyBackgroundFetch(application)
-        if ReturnYouTubeDislikeService.enabled {
-            ReturnYouTubeDislikeService.shared.prepareIfNeeded()
-        }
         if UserDefaults.standard.bool(forKey: UserDefaultsKeys.Debug.mainThreadWatchdog) {
             startMainThreadWatchdog()
         }

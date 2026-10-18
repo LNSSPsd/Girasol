@@ -143,11 +143,6 @@ extension SettingsViewController {
                     .autoZoomToFill, .hideStatusBar,
                     .autoplayEnabled, .autoplayMixEnabled
                 ]
-            ),
-            Section(
-                header: "settings.section.ryd".localized,
-                footer: "settings.footer.ryd".localized,
-                rows: [.rydEnabled]
             )
         ]
     }

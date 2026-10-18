@@ -41,12 +41,6 @@ enum UserDefaultsKeys {
         static let isAnonymous = "isAnonymous"
     }
 
-    enum RYD {
-        static let enabled    = "ryd_enabled"
-        static let userId     = "ryd_userId_v2"
-        static let registered = "ryd_registered_v2"
-    }
-
     enum SponsorBlock {
         static let enabled = "sponsorblock_enabled"
         /// Returns the key for the skip-behavior setting of a given category raw value.

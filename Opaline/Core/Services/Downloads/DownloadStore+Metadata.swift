@@ -81,7 +81,6 @@ extension DownloadStore {
     private static let pageFileName = "page.json"
     private static let segmentsFileName = "sponsorblock.json"
     private static let avatarFileName = "avatar.jpg"
-    private static let votesFileName = "votes.json"
 
     static func savePage(_ page: WatchPage, for videoId: String) {
         write(
@@ -113,21 +112,6 @@ extension DownloadStore {
         read(
             [SponsorBlockSegment].self,
             from: folder(for: videoId).appendingPathComponent(segmentsFileName)
-        )
-    }
-
-    static func saveVotes(_ votes: RYDVotes, for videoId: String) {
-        write(
-            votes,
-            to: folder(for: videoId).appendingPathComponent(votesFileName),
-            what: "votes"
-        )
-    }
-
-    static func votes(for videoId: String) -> RYDVotes? {
-        read(
-            RYDVotes.self,
-            from: folder(for: videoId).appendingPathComponent(votesFileName)
         )
     }
 

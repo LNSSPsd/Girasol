@@ -2,25 +2,6 @@
 import AVFoundation
 import UIKit
 
-// MARK: - Vote Formatting
-
-private func formatVoteCount(_ count: Int) -> String {
-    switch count {
-    case 0 ..< 1_000:
-        return "\(count)"
-    case 1_000 ..< 1_000_000:
-        return String(
-            format: "%.1fK",
-            Double(count) / 1_000
-        )
-    default:
-        return String(
-            format: "%.1fM",
-            Double(count) / 1_000_000
-        )
-    }
-}
-
 // MARK: - Initial State
 
 extension WatchViewController {
@@ -128,7 +109,7 @@ extension WatchViewController {
         view.setNeedsLayout()
     }
 
-    /// RYD/SponsorBlock, playlist prefetch and the first comments page —
+    /// SponsorBlock, playlist prefetch and the first comments page —
     /// kicked off once per video. `applyWatchPage` runs twice (cache, then
     /// network); everything above this is UI application and safe to
     /// re-run, but these are one-shot network calls.
@@ -216,9 +197,8 @@ extension WatchViewController {
     }
 
     func applyEngagementData(from page: WatchPage) {
-        // The watch page never carries these — they arrive later from
-        // Return YouTube Dislike, and this runs again when the network page
-        // lands, so writing a placeholder here wiped the real numbers.
+        // This runs again when the network page lands; a page without a
+        // count must not wipe the one shown.
         if let count = page.likeCount {
             likeCountLabel.text = count
         }
@@ -228,32 +208,8 @@ extension WatchViewController {
     }
 
     func fetchExternalServiceData(videoId: String) {
-        if ReturnYouTubeDislikeService.enabled {
-            fetchRYDVotes(videoId: videoId)
-        }
         if SponsorBlockService.enabled {
             fetchSponsorSegments(videoId: videoId)
-        }
-    }
-
-    func fetchRYDVotes(videoId: String) {
-        ReturnYouTubeDislikeService.shared.fetchVotes(
-            videoId: videoId
-        ) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self,
-                      self.watchPage?.video.id
-                      == videoId
-                else {
-                    return
-                }
-                if case let .success(votes) = result {
-                    self.likeCountLabel.text =
-                        formatVoteCount(votes.likes)
-                    self.dislikeCountLabel.text =
-                        formatVoteCount(votes.dislikes)
-                }
-            }
         }
     }
 
@@ -447,7 +403,6 @@ extension WatchViewController {
         isLoadingComments = false
         descriptionExpanded = false
         likeCountLabel.text = "—"
-        dislikeCountLabel.text = "—"
         currentLikeStatus = .indifferent
         sponsorBlock.reset()
         // Returns to the collapsed preview and drops the previous video's

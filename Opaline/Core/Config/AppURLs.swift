@@ -95,10 +95,6 @@ enum AppURLs {
         static var endpoint: URL? { SolverServer.endpoint(path: "/get_pot") }
     }
 
-    enum RYD {
-        static let api = "https://returnyoutubedislikeapi.com"
-        static let web = "https://returnyoutubedislike.com"
-    }
 
     enum SponsorBlock {
         static let api = "https://sponsor.ajay.app"

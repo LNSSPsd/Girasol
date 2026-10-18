@@ -17,7 +17,7 @@ final class SettingsViewController: UIViewController {
         case homeLayout, defaultTab
         case persistCache, feedCacheDays
         case imageCacheEnabled, imageCacheDays, thumbnailQuality
-        case clearCache, rydEnabled
+        case clearCache
         case sponsorBlockEnabled, sponsorBlockSettings
         case playbackChain
         case resetIdentity
@@ -330,13 +330,6 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             )
         case .clearCache:
             return makeDestructiveCell("settings.row.clearCache".localized)
-        case .rydEnabled:
-            let rydOn = ReturnYouTubeDislikeService.enabled
-            return makeToggleCell(
-                "settings.row.ryd".localized, isOn: rydOn
-            ) {
-                ReturnYouTubeDislikeService.enabled = $0
-            }
         case .sponsorBlockEnabled:
             return makeSponsorBlockToggle()
         case .sponsorBlockSettings:

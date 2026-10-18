@@ -50,7 +50,7 @@ extension WatchViewController {
         for label in [titleLabel, channelNameLabel, commentsLabel] {
             label.textColor = theme.primaryText
         }
-        for label in [metaLabel, channelMetaLabel, likeCountLabel, dislikeCountLabel] {
+        for label in [metaLabel, channelMetaLabel, likeCountLabel] {
             label.textColor = theme.secondaryText
         }
         descriptionButton.setTitleColor(theme.secondaryText, for: .normal)
@@ -151,8 +151,6 @@ extension WatchViewController {
             ? activeTint : secondary
         dislikeButton.tintColor = currentLikeStatus == .dislike
             ? activeTint : tint
-        dislikeCountLabel.textColor = currentLikeStatus == .dislike
-            ? activeTint : secondary
     }
 
     func handleLikeToggleResult(
@@ -166,14 +164,6 @@ extension WatchViewController {
             switch result {
             case .success:
                 AppLog.player("\(label) success for \(videoId)")
-                let rydVal = wasLiked ? 0 : 1
-                if ReturnYouTubeDislikeService.enabled {
-                    ReturnYouTubeDislikeService.shared
-                        .reportVote(
-                            videoId: videoId,
-                            value: rydVal
-                        )
-                }
             case let .failure(error):
                 AppLog.player(
                     "\(label) failed for \(videoId): \(error)"
@@ -197,14 +187,6 @@ extension WatchViewController {
             switch result {
             case .success:
                 AppLog.player("\(label) success for \(videoId)")
-                let rydVal = wasDisliked ? 0 : -1
-                if ReturnYouTubeDislikeService.enabled {
-                    ReturnYouTubeDislikeService.shared
-                        .reportVote(
-                            videoId: videoId,
-                            value: rydVal
-                        )
-                }
             case let .failure(error):
                 AppLog.player(
                     "\(label) failed for \(videoId): \(error)"

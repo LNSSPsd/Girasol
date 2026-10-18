@@ -101,6 +101,7 @@
 /* Collapses the video description */
 "player.description.less" = "Less";
 /* Action bar: share the video */
+"player.action.dislike" = "Dislike";
 "player.action.share" = "Share";
 /* Action bar: save to playlist */
 "player.action.save" = "Save";
@@ -295,7 +296,6 @@
 "settings.section.playback" = "Playback";
 "settings.section.home" = "Home";
 "settings.section.cache" = "Cache";
-"settings.section.ryd" = "Return YouTube Dislike";
 "settings.section.sponsorblock" = "SponsorBlock";
 "settings.section.debug" = "Debug";
 
@@ -304,7 +304,6 @@
 "settings.footer.themeAutoHours" = "Auto switches to the dark theme between the hours above.";
 "settings.footer.playback" = "Zoom to Fill automatically scales the video in fullscreen so no black bars remain. Pinch in the player overrides it per video.\n\nAutoplay plays the next suggested video after a 5s countdown. The Mix toggle applies the same instantly to mix/playlist queues.";
 "settings.footer.home" = "How recommendation shelves are shown: one continuous grid or TV-style horizontal rails.";
-"settings.footer.ryd" = "Dislike counts are powered by Return YouTube Dislike (returnyoutubedislike.com) — an open community project.";
 "settings.footer.debug" = "Choose which ways of playing a video are used, and the order they are tried in. The solver server answers the throttling challenge the TV client's streams carry (and mints its token).";
 
 /* Theme rows; segment labels for dark/light/auto modes */
@@ -361,7 +360,6 @@
 "settings.cache.clearedMessage" = "All cache has been cleared.";
 
 /* Integration rows */
-"settings.row.ryd" = "Return YouTube Dislike";
 "settings.row.sponsorblock" = "SponsorBlock";
 "settings.row.sponsorblockSettings" = "SponsorBlock Settings";
 

@@ -73,7 +73,7 @@ final class WatchViewController: UIViewController {
     /// empty message must not flash before the first result lands.
     var isLoadingComments = false, hasLoadedComments = false
     /// The watch page is applied twice (cache, then network) but its
-    /// one-shot side effects — RYD/SponsorBlock, playlist prefetch,
+    /// one-shot side effects — SponsorBlock, playlist prefetch,
     /// comments — must start only once per video. Set to the videoId whose
     /// side effects already started; nil once the controller moves on.
     var sideEffectsStartedForVideoId: String?
@@ -154,8 +154,7 @@ final class WatchViewController: UIViewController {
     /// running percentage while a job is on.
     let downloadStatusLabel = UILabel()
     let likeCountLabel = UILabel()
-    let dislikeCountLabel = UILabel()
-    var likeCount: String?, dislikeCount: String?
+    var likeCount: String?
     var currentLikeStatus: LikeStatus = .indifferent
 
     // MARK: - Constraints

@@ -28,7 +28,6 @@ When Google dropped support for the official YouTube app on older devices, there
 - **Media controls** — play/pause and next/previous video from Control Center, the lock screen and headphones
 - **Picture-in-Picture** — watch while using other apps
 - **SponsorBlock** — skip sponsored segments automatically
-- **Return YouTube Dislike** — see dislike counts again
 - **Audio tracks** — switch dubbed audio on multi-language videos; AI auto-dubs are marked "(AI)"
 - **Subtitles** — full subtitle/caption support with VTT parsing
 - **Search & browse** — live suggestions, recent-search history, filters (sort, upload date, type, duration), channel pages, playlists
@@ -135,7 +134,7 @@ Opaline/
 │   ├── Config/       URLs, UserDefaults keys, constants
 │   ├── Transport/    HTTP abstraction + decorators
 │   ├── Playback/     VideoSource contracts, sources, HLS machinery
-│   ├── Services/     Caching, SponsorBlock, RYD, subtitles, watchtime
+│   ├── Services/     Caching, SponsorBlock, subtitles, watchtime
 │   └── Common/       Shared UI components & utilities
 └── Features/         One vertical slice per feature
     ├── Channel/      Channel page with tabs
@@ -203,7 +202,6 @@ If Opaline keeps your old device alive, you can support development:
 ## Credits
 
 - [SponsorBlock](https://github.com/ajayyy/SponsorBlock) — crowdsourced API for skipping sponsored segments
-- [Return YouTube Dislike](https://github.com/Anarios/return-youtube-dislike) — community-maintained dislike count data
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) — invaluable reference for understanding YouTube's playback infrastructure
 - [YouTubeLegacy](https://github.com/PoomSmart/YouTubeLegacy) — inspiration for keeping YouTube alive on older devices
 

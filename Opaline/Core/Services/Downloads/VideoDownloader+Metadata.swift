@@ -11,21 +11,8 @@ extension VideoDownloader {
         fetchThumbnail(for: video)
         fetchPage(for: video)
         fetchSegments(for: video.id)
-        fetchVotes(for: video.id)
         fetchComments(for: video.id)
         fetchCaptions(for: video.id)
-    }
-
-    private func fetchVotes(for videoId: String) {
-        guard ReturnYouTubeDislikeService.enabled else {
-            return
-        }
-        ReturnYouTubeDislikeService.shared.fetchVotes(videoId: videoId) { result in
-            guard case .success(let votes) = result else {
-                return
-            }
-            DownloadStore.saveVotes(votes, for: videoId)
-        }
     }
 
     private func fetchPage(for video: Video) {

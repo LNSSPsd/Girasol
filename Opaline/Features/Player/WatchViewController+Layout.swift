@@ -13,8 +13,7 @@ extension WatchViewController {
             ActionBarItem(
                 button: dislikeButton,
                 icon: "icon_thumb_down",
-                label: nil,
-                countLabel: dislikeCountLabel
+                label: "player.action.dislike".localized
             ),
             ActionBarItem(
                 button: shareButton,
