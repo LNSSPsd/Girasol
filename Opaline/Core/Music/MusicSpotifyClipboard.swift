@@ -1,8 +1,7 @@
 import UIKit
 
-/// Spotify's share sheet hands its "Give this playlist a listen: …" text to
-/// the apps it knows and gives a share extension nothing, so "Open in
-/// Opaline" never shows there. Its "Copy link" does work: coming back to
+/// Spotify's share sheet hands its "Give this playlist a listen: …" text
+/// only to the apps it knows. Its "Copy link" does work: coming back to
 /// the app with a Spotify playlist link copied offers to open it, once per
 /// copy. The pasteboard is only read when iOS says it holds a link
 /// (`detectPatterns` shows no paste banner).

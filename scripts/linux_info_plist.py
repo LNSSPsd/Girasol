@@ -65,7 +65,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--kind", choices=["app", "appex"], required=True)
     parser.add_argument("--executable", required=True)
     parser.add_argument("--bundle-id", required=True)
     parser.add_argument("--version", required=True)
@@ -89,7 +88,7 @@ def main():
         "CFBundleIdentifier": args.bundle_id,
         "CFBundleInfoDictionaryVersion": "6.0",
         "CFBundleName": args.executable,
-        "CFBundlePackageType": "APPL" if args.kind == "app" else "XPC!",
+        "CFBundlePackageType": "APPL",
         "CFBundleShortVersionString": args.version,
         "CFBundleVersion": args.build,
         "CFBundleSupportedPlatforms": ["iPhoneOS"],
@@ -99,10 +98,7 @@ def main():
         "DTSDKName": f"iphoneos{args.sdk_version}",
         "UIRequiredDeviceCapabilities": ["arm64"],
     })
-    if args.kind == "app":
-        app_keys(info)
-    else:
-        info["UIDeviceFamily"] = [1, 2]
+    app_keys(info)
 
     with open(args.output, "wb") as f:
         plistlib.dump(info, f, fmt=plistlib.FMT_BINARY)

@@ -26,7 +26,6 @@ format-check:
 #   $(THEOS)/sdks/iPhoneOS14.*.sdk
 # Output: build/Opaline_<version>.ipa, ad-hoc signed with ldid for AppSync /
 # TrollStore installs, same bundle id and entitlements as make_ipa.sh.
-# APPEX=0 leaves out the "Open in Opaline" share-sheet extension.
 # `make publish` copies it to $(PUBLISH_DIR) with an index.html whose link
 # installs it through TrollStore.
 #
@@ -47,7 +46,6 @@ VERSION        ?= $(shell sed -n 's/.*MARKETING_VERSION = \(.*\);/\1/p' Opaline.
 BUILD_NUMBER   ?= 1
 APP_MANIFEST_URL ?= https://raw.githubusercontent.com/verback2308/ytlite/main/source/apps.json
 TEAM_ID        := 4RAT6786W6
-APPEX          ?= 1
 # Compiler threads, and parallel Objective-C compiles.
 JOBS           ?= 16
 MAKEFLAGS      += -j$(JOBS)
@@ -90,7 +88,6 @@ endif
 
 OUT       := build/linux
 APP       := $(OUT)/Payload/Opaline.app
-APPEX_DIR := $(APP)/PlugIns/OpalineOpenIn.appex
 IPA       := build/Opaline_$(VERSION).ipa
 APP_SRCS  := $(shell find Opaline -name '*.swift')
 # Objective-C sources compile with clang and reach Swift through the
@@ -108,15 +105,8 @@ OBJCFLAGS := -target arm64-apple-ios$(MIN_OS) -isysroot $(SDKROOT) \
 	-fobjc-arc -fmodules -fno-autolink -O2 -Wall -Wno-unused-parameter
 # What only the Objective-C code uses, linked by name instead.
 OBJC_FRAMEWORKS := WebKit
-# Shared with the app target, as in the Xcode project.
-APPEX_SRCS := $(wildcard OpalineOpenIn/*.swift) Opaline/Core/Common/YouTubeLinkParser.swift
 PLIST := python3 scripts/linux_info_plist.py --version $(VERSION) \
 	--build $(BUILD_NUMBER) --min-os $(MIN_OS) --sdk-version $(SDK_VERSION)
-
-ifeq ($(APPEX),1)
-APPEX_BIN := $(OUT)/OpalineOpenIn
-APPEX_PARTS := $(APPEX_BIN) $(OUT)/appex.entitlements
-endif
 
 $(OUT)/objc/%.o: %.m $(OBJC_HDRS) Makefile
 	@mkdir -p $(@D)
@@ -134,12 +124,6 @@ $(OUT)/Opaline: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
 	@if $(SWIFT_TC)/bin/otool -L $@ | grep -q AVFAudio.framework; then \
 		echo "error: $@ loads AVFAudio.framework, which iOS 14.3 does not have"; rm -f $@; exit 1; fi
 
-$(OUT)/OpalineOpenIn: $(APPEX_SRCS) Makefile
-	@mkdir -p $(OUT)/obj-appex
-	cd $(OUT)/obj-appex && $(SWIFTC) $(SWIFTFLAGS) -wmo -num-threads $(JOBS) -module-name OpalineOpenIn \
-		-application-extension -Xlinker -e -Xlinker _NSExtensionMain \
-		$(addprefix $(CURDIR)/,$(APPEX_SRCS)) -o $(CURDIR)/$@
-
 $(OUT)/app.entitlements:
 	@mkdir -p $(@D)
 	printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -150,12 +134,8 @@ $(OUT)/app.entitlements:
 		'<key>get-task-allow</key><true/>' \
 		'</dict></plist>' > $@
 
-$(OUT)/appex.entitlements: $(OUT)/app.entitlements
-	sed 's|$(BUNDLE_ID)<|$(BUNDLE_ID).OpenIn<|' $< > $@
-
-# Packaging is cheap, so it always reruns: that way switching APPEX takes
-# effect without a clean.
-ipa: $(OUT)/Opaline $(OUT)/app.entitlements $(APPEX_PARTS)
+# Packaging is cheap, so it always reruns.
+ipa: $(OUT)/Opaline $(OUT)/app.entitlements
 	rm -rf $(OUT)/Payload
 	mkdir -p $(APP)
 	# Resources: localizations, asset-catalog images as loose PNGs, icons.
@@ -170,21 +150,12 @@ ipa: $(OUT)/Opaline $(OUT)/app.entitlements $(APPEX_PARTS)
 		cp $$I/Icon-$$s@1x.png $(APP)/AppIcon$${s}x$$s~ipad.png; \
 		cp $$I/Icon-$$s@2x.png $(APP)/AppIcon$${s}x$$s@2x~ipad.png; done; \
 	cp $$I/Icon-83.5@2x.png $(APP)/AppIcon83.5x83.5@2x~ipad.png
-	$(PLIST) --kind app --source Opaline/Info.plist --output $(APP)/Info.plist \
+	$(PLIST) --source Opaline/Info.plist --output $(APP)/Info.plist \
 		--executable Opaline --bundle-id $(BUNDLE_ID) \
 		--var APP_MANIFEST_URL=$(APP_MANIFEST_URL)
 	printf 'APPL????' > $(APP)/PkgInfo
 	# Binaries and signatures; iOS 14 has the Swift runtime built in.
 	cp $(OUT)/Opaline $(APP)/Opaline
-ifeq ($(APPEX),1)
-	mkdir -p $(APPEX_DIR)
-	for d in OpalineOpenIn/*.lproj; do cp -r "$$d" $(APPEX_DIR)/; done
-	$(PLIST) --kind appex --source OpalineOpenIn/Info.plist \
-		--output $(APPEX_DIR)/Info.plist --executable OpalineOpenIn \
-		--bundle-id $(BUNDLE_ID).OpenIn
-	cp $(APPEX_BIN) $(APPEX_DIR)/OpalineOpenIn
-	$(LDID) -S$(OUT)/appex.entitlements $(APPEX_DIR)/OpalineOpenIn
-endif
 	$(LDID) -S$(OUT)/app.entitlements $(APP)/Opaline
 	rm -f $(IPA)
 	cd $(OUT) && zip -qry $(CURDIR)/$(IPA) Payload

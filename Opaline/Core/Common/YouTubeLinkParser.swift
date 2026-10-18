@@ -44,16 +44,15 @@ enum YouTubeLinkParser {
         return seed.count == 11 ? seed : nil
     }
 
-    /// Whether this link is one the app can open at all. One rule, because
-    /// the share extension and the deep-link handler have to agree on it.
+    /// Whether this link is one the app can open at all.
     static func handles(_ url: URL) -> Bool {
         videoId(from: url) != nil || playlistId(from: url) != nil || spotifyPlaylistId(from: url) != nil
     }
 
     /// A shared Spotify playlist — `open.spotify.com/playlist/ID` (an
-    /// `intl-xx/` prefix too), `spotify:playlist:ID`, or the
-    /// `ytlite://spotify?playlist=ID` the share extension turns them into —
-    /// which music mode opens to play or import.
+    /// `intl-xx/` prefix too), `spotify:playlist:ID`, or
+    /// `ytlite://spotify?playlist=ID` — which music mode opens to play or
+    /// import.
     static func spotifyPlaylistId(from url: URL) -> String? {
         let scheme = url.scheme?.lowercased()
         let id: String?
