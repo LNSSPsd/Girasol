@@ -15,6 +15,7 @@
 <img src="screenshots/music-home.png" width="24%" alt="Music home">
 <img src="screenshots/music-player.png" width="24%" alt="Music player with lyrics">
 <img src="screenshots/music-album.png" width="24%" alt="Album">
+<img src="screenshots/music-import.png" width="24%" alt="Music Import">
 <img src="screenshots/video-player.png" width="24%" alt="Video player">
 
 </div>
