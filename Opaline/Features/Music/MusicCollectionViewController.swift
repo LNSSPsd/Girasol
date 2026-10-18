@@ -75,6 +75,7 @@ final class MusicCollectionViewController: MusicListViewController {
                 itemCount: page.tracks.count
             )
             self.albumArtist = page.artist
+            self.installBarItems()
             self.titleLabel.text = self.collection.title
             self.subtitleLabel.text = self.collection.description
             self.title = self.collection.title
@@ -108,6 +109,7 @@ final class MusicCollectionViewController: MusicListViewController {
             name: DownloadStore.didChangeNotification,
             object: nil
         )
+        installBarItems()
         subtitleLabel.isUserInteractionEnabled = true
         subtitleLabel.addGestureRecognizer(
             UITapGestureRecognizer(target: self, action: #selector(subtitleTapped))
@@ -142,10 +144,47 @@ final class MusicCollectionViewController: MusicListViewController {
 
     private func markOwn() {
         isOwn = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            title: "Edit", style: .plain, target: self, action: #selector(showEditMenu)
-        )
+        installBarItems()
         tableView.reloadData()
+    }
+
+    /// Share for anything YouTube has a page of (an unlisted playlist is
+    /// only reachable through its link), Edit for your own playlists.
+    private func installBarItems() {
+        var items: [UIBarButtonItem] = []
+        if isOwn {
+            items.append(UIBarButtonItem(
+                title: "Edit", style: .plain, target: self, action: #selector(showEditMenu)
+            ))
+        }
+        if shareURL != nil {
+            items.append(UIBarButtonItem(
+                barButtonSystemItem: .action, target: self, action: #selector(share(_:))
+            ))
+        }
+        navigationItem.rightBarButtonItems = items
+    }
+
+    /// music.youtube.com's page of it; none for the app's own lists
+    /// (downloads, `opaline.` ids).
+    private var shareURL: URL? {
+        let id = collection.id
+        guard !isAllDownloads, !id.hasPrefix("opaline."), !id.isEmpty else {
+            return nil
+        }
+        return id.hasPrefix("MPREb")
+            ? URL(string: "https://music.youtube.com/browse/\(id)")
+            : URL(string: "https://music.youtube.com/playlist?list=\(id)")
+    }
+
+    @objc
+    private func share(_ sender: UIBarButtonItem) {
+        guard let url = shareURL else {
+            return
+        }
+        let activity = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        activity.popoverPresentationController?.barButtonItem = sender
+        present(activity, animated: true)
     }
 
     /// The playlist editor: details, privacy, order and removals in place.
