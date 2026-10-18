@@ -1,214 +1,154 @@
 <div align="center">
 
-# Opaline
+# Girasol
 
-**A lightweight, native YouTube client for iOS 12+. No ads, no tracking, no dependencies.**
+**YouTube Music and YouTube for iOS 14, built on Linux.**
 
-[![Latest release](https://img.shields.io/github/v/release/verback2308/Opaline?label=release&color=blue)](https://github.com/verback2308/Opaline/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/verback2308/Opaline/total?color=brightgreen)](https://github.com/verback2308/Opaline/releases)
-![iOS 12+](https://img.shields.io/badge/iOS-12%2B-lightgrey?logo=apple)
+A music player first, a video app second, and no Shorts anywhere.
+
+![iOS 14](https://img.shields.io/badge/iOS-14-lightgrey?logo=apple)
+![Built on Linux](https://img.shields.io/badge/built%20on-Linux-blue?logo=linux&logoColor=white)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
+
+<!-- Screenshots: drop the images into screenshots/ under these names. -->
+<img src="screenshots/music-home.png" width="24%" alt="Music home">
+<img src="screenshots/music-player.png" width="24%" alt="Music player with lyrics">
+<img src="screenshots/music-album.png" width="24%" alt="Album">
+<img src="screenshots/video-player.png" width="24%" alt="Video player">
 
 </div>
 
-<sub>Opaline was released as YTLite until August. It was renamed to avoid confusion with an unrelated tweak of the same name and is not related to it.</sub>
+Girasol is a fork of [Opaline](https://github.com/verback2308/Opaline), a native YouTube
+client for older iPhones and iPads. It keeps Opaline's video app and adds a complete
+YouTube Music–style app beside it, one tap away. It drops what pulls you into scrolling:
+there is no Shorts feed. It also leaves Apple's toolchain behind: the whole app builds with
+`make` on a Linux machine, with no Mac, no Xcode and no developer account.
 
-## Why
+It is made for one target, iOS 14, and is tested on iOS 14.3 (iPhone XR).
 
-When Google dropped support for the official YouTube app on older devices, there was no way to watch videos properly. Browsers capped quality at 360p — and even that barely ran. Opaline was born to restore what was lost: high-quality playback on hardware that still works fine, just ignored by Google — a focused, lightweight client that does one thing well.
+## Music
 
-## Features
+The 🎬|🎵 switch on every top bar turns the app into a music player of its own: Home,
+Search, Library, a now-playing bar and a full-screen player with queue, shuffle and repeat.
 
-- **Video playback** — up to 1080p 60fps on every device; 2K/4K on hardware with AV1 decode (iPhone 15 Pro and newer, M3+ iPads)
-- **Shorts** — a native full-screen viewer with vertical swiping, likes, comments and sharing; the next short is preloaded so it opens on video rather than a poster. Tapping a short anywhere carries that list into the viewer, and the whole tab can be switched off
-- **Kids content** — plays videos the standard API sources refuse, via a dedicated playback source
-- **Offline downloads** — save a video to the device and watch it with no network. Its page comes along: thumbnail, description, like counts and the comments as of the moment you saved it. Settings → Downloads picks the quality, how many comments and which subtitle languages travel with it, and a video that plays dubbed in your language is saved dubbed
-- **Pinch to zoom** — fill the screen in fullscreen with a pinch, or turn on Zoom to Fill to do it automatically
-- **Background audio** — continue listening with the screen off
-- **Media controls** — play/pause and next/previous video from Control Center, the lock screen and headphones
-- **Picture-in-Picture** — watch while using other apps
-- **SponsorBlock** — skip sponsored segments automatically
-- **Audio tracks** — switch dubbed audio on multi-language videos; AI auto-dubs are marked "(AI)"
-- **Subtitles** — full subtitle/caption support with VTT parsing
-- **Search & browse** — live suggestions, recent-search history, filters (sort, upload date, type, duration), channel pages, playlists
-- **Smart home feed** — endless recommendations with category chips read from your feed's shelves
-- **Subscriptions** — follow channels with a local subscription feed
-- **Notifications** — a bell in the top bar collects app news and new-version announcements, with the full release notes in the message; system notifications are optional and everything still collects in-app if you decline
-- **Watch history** — progress indicators, synced across devices; a video resumes where you left it the moment you reopen it, without waiting for the server to catch up
-- **Autoplay** — automatically play the next related video, with replay, previous and next offered when one ends
-- **Auto theme** — follows system dark mode on iOS 13+, scheduled hours on iOS 12; manual override available
-- **Made for old hardware** — thumbnails and channel details are fetched and decoded a few at a time rather than all at once, which is what keeps scrolling smooth on a dual-core A7
-- **Your layout** — pick the tab the app opens on, force the icon light or dark, and browse settings as a nested menu instead of one long list
+**Listening**
+- **Gapless playback**: the next song is loaded before the current one ends; albums play
+  as they were made.
+- **It keeps playing**: when an album or playlist ends, a mix built from what you played
+  lately carries on (or YouTube Music's own recommendations, with the optional sign-in).
+- **Songs, not music videos**: where YouTube Music lists a song's music video, which can be a
+  different edit, the album version plays instead, using YouTube's own pairing.
+- **Same volume for every song**: loud masters are turned down to YouTube's loudness target.
+- **Crossfade** (optional, 3–12 s; albums stay gapless) and a **sleep timer** (15–90 minutes
+  with a slow fade, end of the song, or end of the album or playlist).
+- **Switch modes without stopping**: a song keeps playing as a bar in video mode, a video as a
+  small picture in music mode.
+- **Picks up where you left off**: queue, album or playlist, and position survive a relaunch.
 
-## Installation
+**Lyrics**
+- **Synced lyrics** from YouTube Music, LRCLIB and NetEase, with strict matching (no lyrics
+  is better than another song's), tap a line to seek, a per-song timing nudge, and kept for
+  offline.
+- **Japanese names as written**: Japanese songs, artists and albums keep their original
+  names instead of YouTube Music's romanizations (a setting, on by default).
 
-Opaline runs on devices with **iOS 12 and above**.
+**Offline and data**
+- **Downloads** of songs, albums and playlists (audio only), playable offline. Downloaded
+  playlists pick up new songs on Wi-Fi, and an interrupted album download finishes by itself.
+- **Songs kept as they play**: what you play is saved as it streams (512 MB by default,
+  adjustable or off), so a song played again starts at once, uses no data and plays offline.
+  The songs you play most stay longest.
+- **Easy on mobile data**: extras such as full-size artwork and finishing half-played songs
+  wait for Wi-Fi.
+- A **Storage** screen shows what downloads and the cache take.
 
-For older hardware — armv7 devices on iOS 9.3, such as the iPad 2, iPad 3, iPad mini and iPhone 4S — [Joeviocoe/Opaline](https://github.com/Joeviocoe/Opaline) is a downport by another developer, with hardware-keyboard support and account-free local subscriptions and history. It is a separate project: we do not build, test or support it.
+**Your library**
+- **Playlists**: create, rename, delete, reorder, add and remove songs (the exact copy, even
+  when a song is in a playlist twice); share any playlist or album; see at a glance which
+  playlists are public, link-only or private.
+- **Spotify playlists**: copy a Spotify playlist link and open it in the app. Every track is
+  matched to YouTube Music, again strictly: a version YouTube Music doesn't have shows as
+  missing rather than as a near miss. Play it as it is, or import it as a YouTube Music
+  playlist.
+- **Speed dial and Listen again** on Home, ranked from what you play.
+- **Optional YouTube Music sign-in**: your personal Home, library, history and playlist
+  editing. Without it every other feature works.
 
-### Non-jailbroken devices
+## Video
 
-**Option 1 — Add source (recommended)**
+Opaline's video app, minus the distractions:
+- Home, Subscriptions, channels, search with filters, playlists and watch history synced with
+  YouTube.
+- Up to 1080p, background audio, Picture in Picture, subtitles, switching between a video's
+  audio tracks.
+- SponsorBlock, comments, autoplay, downloads for offline viewing.
+- **No Shorts**: no Shorts tab and no swipe feed. Shorts from channels you subscribe to appear
+  only on their channel pages and in Subscriptions, as ordinary videos.
+- No upstream update nags, no background feed refreshing, an English-only interface.
 
-Add the Opaline source to your sideloading app to receive automatic updates:
+## Install
 
-<a href="https://stikstore.app/altdirect/?url=https://verback2308.github.io/repo/apps.json"><img src="https://github.com/StikStore/altdirect/raw/main/assets/png/AltSource_Blue.png" height="55" alt="Add Source"></a>
+Girasol is distributed as an ad-hoc signed IPA for **TrollStore** (or AppSync). Build it
+yourself (below), then open the `.ipa` in TrollStore. `make publish` also serves an install
+page on your LAN, so you can install from the iPhone with one tap.
 
-**Option 2 — Manual install**
+## Build (Linux)
 
-[Download the latest IPA](https://github.com/verback2308/Opaline/releases/latest) and install via **SideStore**, **AltStore**, or **LiveContainer**.
+Girasol builds entirely on Linux. You need:
 
-**Option 3 — Build from source**
-
-On Linux, with a theos tree holding the Swift 5.8 iOS toolchain and an iPhoneOS 14 SDK:
+- a [theos](https://theos.dev) tree with the Swift 5.8 iOS toolchain at
+  `~/theos/toolchain/swift-5.8/linux/iphone` (swiftc, clang, ldid);
+- an **iPhoneOS 14 SDK** in `~/theos/sdks/` (a newer SDK binds Swift symbols iOS 14 lacks);
+- `make`, `python3` and `zip`.
 
 ```bash
-make ipa        # build/Opaline_<version>.ipa
+make ipa                # → build/Opaline_<version>.ipa
+make publish            # the same, plus an install page in $(PUBLISH_ROOT)/opaline
+make ipa WMO=1          # whole-module build (slower; incremental is the default)
+make ipa JOBS=8         # compiler threads and parallel jobs (default 16)
 ```
 
-### Jailbroken devices
+Swift builds incrementally: a change to one file rebuilds in a few seconds, a clean build
+takes about a minute. Objective-C sources compile with clang beside it. There is no Xcode
+project. Asset catalogs ship as loose images and the Info.plist is generated by
+`scripts/linux_info_plist.py`.
 
-**Option 1 — Cydia/Sileo repo (recommended)**
+## Privacy: who the app talks to
 
-Add the repo to your package manager to install Opaline and receive automatic updates:
+- **YouTube and YouTube Music**: everything you browse and play. It works without an account;
+  the optional TV sign-in and YouTube Music sign-in are kept in the iOS Keychain and only sent
+  to Google.
+- **Lyrics**: LRCLIB and NetEase receive the title and artist of the song you are playing.
+- **Spotify**: only when you open a Spotify playlist link, to read that playlist.
+- **SponsorBlock**: the ID of the video you watch, when SponsorBlock is on.
+- **Opaline's solver server**: only on the `tv.sabr` playback fallback, which receives
+  YouTube's player URL and a challenge string, nothing about you. Normal playback never uses
+  it.
 
-```
-https://verback2308.github.io/repo/
-```
+No analytics, no ads, no tracking of its own.
 
-Rootful (`iphoneos-arm`) and rootless (`iphoneos-arm64`) packages are provided; Sileo, Zebra and Cydia are supported. Every released version stays available in the repo, so you can also install or roll back to an older one (Sileo/Zebra: package page → version list).
+## Reporting problems
 
-Pick one channel and stay on it — the repo package and the IPA share a bundle identifier, and having both installed leaves an app icon the Home Screen cannot delete. Already have the other one? Remove it first: the IPA from the Home Screen, the repo package from your package manager (or `dpkg -r com.verback.ytlite` over SSH).
-
-**Option 2 — Manual install**
-
-Install the `.ipa` package directly:
-- **Filza** — open the `.ipa` file → Install
-- **ReProvision** — sign and install the IPA from the app
-
-## Known Issues and Limitations
-
-- Playback speeds above 2x may cause issues
-- Comments are read-only — you can browse and sort them and open replies, but not post, reply or like
-- Notification delivery is scheduled by iOS, which grants background time at its own discretion — expect news to arrive within hours of publication, not minutes, and not at all while Background App Refresh or Low Power Mode says otherwise
-- **Picture in Picture is limited by the system before iOS 15**, and no app can work around it: the window survives exactly one video, and switching to another one closes it and leaves audio playing — [the full findings are in issue #31](https://github.com/verback2308/Opaline/issues/31#issuecomment-5148224679)
-  - Before iOS 14.2 the system only starts PiP by itself from **fullscreen**. Leaving the app while the video plays inline gives background audio instead — the PiP button works in both cases
-  - Before iOS 15 background audio requires the player to give up its video layer, and the system then refuses to open PiP for that video at all. So once a video has played in the background, automatic PiP no longer starts for it — the PiP button still does, and the next video starts clean
-  - On a **jailbroken device** PiP may not start at all — confirmed on an iPad mini 2 running iOS 12.5.8 with Chimera, and likely the same on checkra1n. The jailbreak denies it, not the app; installing [ForceInPicture](https://github.com/PoomSmart/ForceInPicture) restores it
-
-## Playback Helper Server
-
-Signed-in playback relies on a small companion service, and so does the Mobile Web source it falls back to. Preparing these streams requires evaluating JavaScript from YouTube's public player page — something iOS 12-era devices can't do on-device. The app delegates that single step to the helper server and receives the computed result back.
-
-Since 14 August this covers more than it used to. Dubbed audio and videos made for kids are prepared this way, so if the service is unreachable, dubs quietly fall back to the original audio and kids videos won't play until it's back.
-
-**What it sees:** no account data, no tokens, no cookies, no watch history — only the challenge strings taken from the public player code and the ID of the video being prepared. If you're inspecting traffic and wondering about requests to a non-YouTube host — that's this.
-
-The server's source code will be published later so you can host your own instance and point the app at it (**Settings → Debug → Solver Server**).
-
-## Bug Reports
-
-If you encounter a bug, you can export debug logs directly from the app:
-
-**Settings → Debug → Share Debug Log**
-
-This generates a log file you can attach to your GitHub issue. The log includes timestamped playback, API, and caching events that help diagnose problems.
-
-<details>
-<summary><b>For developers</b></summary>
-
-## Building
-
-`make ipa` builds `build/Opaline_<version>.ipa` on Linux (see the comments at the top of the
-`Makefile` for the toolchain and SDK it expects). Swift builds incrementally; `make ipa WMO=1`
-builds the whole module at once.
-
-## Architecture
-
-```
-Opaline/
-├── App/              Composition root: AppDelegate, DI wiring, tab bar
-├── Core/             Shared kernel (features depend on it, never on each other)
-│   ├── API/          YouTube Innertube API client
-│   ├── Auth/         OAuth device-code flow
-│   ├── Config/       URLs, UserDefaults keys, constants
-│   ├── Transport/    HTTP abstraction + decorators
-│   ├── Playback/     VideoSource contracts, sources, HLS machinery
-│   ├── Services/     Caching, SponsorBlock, subtitles, watchtime
-│   └── Common/       Shared UI components & utilities
-└── Features/         One vertical slice per feature
-    ├── Channel/      Channel page with tabs
-    ├── Home/         Home feed
-    ├── Library/      Playlists & saved videos
-    ├── Player/       Video player & watch page
-    ├── Profile/      User profile
-    ├── Search/       Search with suggestions
-    └── Subscriptions/ Subscription feed
-```
-
-### Key Design Decisions
-
-- **Zero external dependencies** — Networking via a custom `HTTPTransport` abstraction over `URLSession`, images via custom `ThumbnailImageView`, playback via `AVPlayer`
-- **All UIKit, no SwiftUI** — Programmatic layout, no storyboards
-- **iOS 12+ support** — No SF Symbols, no SwiftUI, no Combine
-- **Manual JSON parsing** — `JSONSerialization` + dictionary traversal for YouTube Innertube API responses
-- **Dependency injection** — `ServiceContainer` provides services; view controllers receive dependencies via initializers
-
-### Playback Pipeline
-
-Playback is built on a single `VideoSource` abstraction — each way of playing a video implements the same interface and owns both stream resolution and quality selection. `PlaybackFacade` just asks a factory for the configured source, calls `loadPlayback`, and hands the prepared `AVPlayerItem` to the player shell. The sources:
-
-1. **Auto** *(default)* — Composite: tries Android VR first, transparently falls back to Mobile Web when a video fails to resolve or start.
-2. **Android VR** — Streams via YouTube's Innertube API; adaptive formats (360p–1080p AVC, up to 4K AV1 on supported hardware) are converted from DASH SIDX byte ranges into an HLS playlist for native `AVPlayer`, with progressive/native-HLS fallbacks.
-3. **Mobile Web** — Handles videos the Android VR client refuses (e.g. kids content). Stream URLs require solving JavaScript challenges from the player page; that step is delegated to the helper server (see above), everything else stays on-device.
-4. **Progressive** — Direct 360p MP4 URL for the restricted case (e.g. server-side A/B experiments).
-
-Quality selection is source-agnostic: the player UI simply renders whatever qualities the active source reports. Background audio is `AVAudioSession`-based and works across all sources.
-
-### Authentication
-
-OAuth device-code flow: the app requests a device code → user enters it at google.com/device → tokens are stored in Keychain. Anonymous browsing is supported.
-
-## Project Structure
-
-| Component | Purpose |
-|-----------|---------|
-| `InnertubeClient` | YouTube API: browse, search, player, comments, subscriptions |
-| `PlaybackFacade` | Selects a `VideoSource` via factory, loads it, and drives player setup |
-| `VideoPlayerView` | Custom player UI with controls, gestures, PiP |
-| `WatchViewController` | Watch page: player + metadata + comments + related |
-| `AppCache` | Dual-layer cache (memory + disk) with TTL |
-| `SponsorBlockController` | SponsorBlock API integration |
-| `ThemeManager` | App-wide theming (dark/light) |
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes (`git commit -am 'Add my feature'`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Open a Pull Request
-
-Please follow the existing code style. SwiftLint is configured and runs as a build phase.
-
-</details>
-
-## Support
-
-If Opaline keeps your old device alive, you can support development:
-
-<a href="https://buymeacoffee.com/verback2308" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-violet.png" alt="Buy me a coffee" height="45"></a>
+Settings → Debug → **Share log** exports a timestamped log of playback, network and cache
+events. It is the fastest way to tell what went wrong.
 
 ## Credits
 
-- [SponsorBlock](https://github.com/ajayyy/SponsorBlock) — crowdsourced API for skipping sponsored segments
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — invaluable reference for understanding YouTube's playback infrastructure
-- [YouTubeLegacy](https://github.com/PoomSmart/YouTubeLegacy) — inspiration for keeping YouTube alive on older devices
+- [Opaline](https://github.com/verback2308/Opaline) by verback2308: the app this one is built
+  on.
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) and its [EJS](https://github.com/yt-dlp/ejs)
+  solver, the reference for how YouTube playback works.
+- [ytmusicapi](https://github.com/sigma67/ytmusicapi): the reference for YouTube Music's web
+  API.
+- [LRCLIB](https://lrclib.net) and NetEase Cloud Music: lyrics.
+- [SponsorBlock](https://sponsor.ajay.app): crowdsourced sponsor segments.
 
 ## Legal
 
-This project is for educational and personal use. It is not affiliated with, endorsed by, or connected to Google or YouTube. Use at your own risk.
+For personal and educational use. Not affiliated with, endorsed by, or connected to Google,
+YouTube or Spotify.
 
 ## License
 
-[GNU General Public License v3.0](LICENSE) — any derivative work must also be released under GPLv3 with its full source code.
+[GNU General Public License v3.0](LICENSE), as Opaline is. Any derivative work must also be
+released under GPLv3 with its full source code.
