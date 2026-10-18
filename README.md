@@ -130,8 +130,8 @@ directly with `SWIFT_TC=<toolchain>` and `SDKROOT=<sdk>` (the SDK folder must ke
 On Ubuntu 22.04 (what the toolchain is built for; the GitHub workflow does the same):
 
 ```bash
-sudo apt install make python3 zip xz-utils git curl ca-certificates iproute2 \
-  libxml2 libz3-4 libncurses6 libedit2 libcurl4
+su -c 'apt install make python3 zip xz-utils git curl ca-certificates iproute2 \
+  libxml2 libz3-4 libncurses6 libedit2 libcurl4'
 # The toolchain: swift-5.8-ubuntu22.04.tar.xz on x86-64, swift-5.8-ubuntu22.04-aarch64.tar.xz on ARM64
 mkdir -p ~/theos/toolchain/swift-5.8
 curl -fsSL https://github.com/kabiroberai/swift-toolchain-linux/releases/download/v2.3.0/swift-5.8-ubuntu22.04.tar.xz \
@@ -184,7 +184,8 @@ with the repository mounted:
 docker run -it --name girasol -v "$PWD":/src -w /src ubuntu:22.04 bash
 ```
 
-In it, run `apt update`, then the Ubuntu steps above (without `sudo`),
+In it, run `apt update`, then the Ubuntu steps above (the container runs as root: `apt install`
+without `su -c`),
 `git config --global --add safe.directory /src` (the mounted repository belongs to another
 user) and `make ipa`. On Apple silicon the container is ARM64: use the `aarch64` toolchain. The built files appear in
 `build/` on the Mac. Later, `docker start -ai girasol` returns to the same container with the
