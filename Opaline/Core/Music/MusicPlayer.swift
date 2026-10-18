@@ -957,6 +957,25 @@ final class MusicPlayer: NSObject {
         )
     }
 
+    /// A preloaded track that has not started a few seconds after taking
+    /// over (an item AVQueuePlayer never prepared, e.g. a stream that was
+    /// queued behind a file) is loaded afresh instead of staying silent.
+    private func checkStarted(_ item: AVPlayerItem, track: Video) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+            guard let self, self.playingItem === item, self.current?.id == track.id,
+                  self.player.currentItem === item, self.player.timeControlStatus != .paused,
+                  CMTimeGetSeconds(item.currentTime()) < 0.5
+            else {
+                return
+            }
+            AppLog.player(
+                "music: preloaded \(track.id) did not start (status \(item.status.rawValue),"
+                    + " \(item.error.map { "\($0)" } ?? "no error")): loading it again"
+            )
+            self.load()
+        }
+    }
+
     /// Takes over a preloaded track: its facade becomes the player's own,
     /// so recovery and watch time follow the track that plays.
     private func adopt(_ ready: Prefetcher.Ready, fadingOut outgoing: AVQueuePlayer? = nil, over seconds: TimeInterval = 0) {
@@ -984,6 +1003,7 @@ final class MusicPlayer: NSObject {
             player.removeAllItems()
             player.insert(ready.item, after: nil)
         }
+        checkStarted(ready.item, track: track)
         if outgoing == nil {
             applyLevel(for: track)
         }
@@ -1555,7 +1575,17 @@ private final class Prefetcher: PlaybackContext {
             self.pending = nil
             return
         }
-        player.insert(prepared.item, after: after)
+        // AVQueuePlayer never prepares a stream (our HLS) queued behind a
+        // local file, and fails on reaching it (a downloaded
+        // playlist, then the mix, stopped). Kept out of the queue, it is put
+        // in when the file ends (`adopt`): a short gap, still no new resolve.
+        let behindFile = (after.asset as? AVURLAsset)?.url.isFileURL == true
+        let isFile = (prepared.item.asset as? AVURLAsset)?.url.isFileURL == true
+        if behindFile, !isFile {
+            AppLog.player("music: next \(pending.track.id) streams after a downloaded file: held out of the queue")
+        } else {
+            player.insert(prepared.item, after: after)
+        }
         ready = Ready(
             track: pending.track,
             item: prepared.item,
