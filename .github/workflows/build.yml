@@ -4,8 +4,9 @@
 #   (Girasol_<v>.ipa for TrollStore, Girasol_<v>_sandboxed.ipa, and the
 #   jailbreak debs Girasol_<v>_iphoneos-arm[64].deb) and a release `v<v>`
 #   with all of them, which creates the tag;
-# - otherwise → a debug IPA (`make ipa DEBUG=1`), kept as a download on the
-#   run.
+# - otherwise → the same files as debug builds (`make release DEBUG=1`:
+#   …_debug.ipa, …_sandboxed_debug.ipa, …_iphoneos-arm[64]_debug.deb), kept
+#   as downloads on the run.
 # Cached: the toolchain and SDK, and each build kind's object files.
 name: Build
 
@@ -47,7 +48,7 @@ jobs:
           version=$(tr -d '[:space:]' < VERSION)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if gh release view "v$version" > /dev/null 2>&1; then
-            echo "Release v$version exists: debug build"
+            echo "Release v$version exists: debug builds"
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "out=build/linux_debug" >> "$GITHUB_OUTPUT"
           else
@@ -115,7 +116,7 @@ jobs:
           if [ "${{ steps.kind.outputs.release }}" = true ]; then
             make release JOBS="$(nproc)"
           else
-            make ipa DEBUG=1 JOBS="$(nproc)"
+            make release DEBUG=1 JOBS="$(nproc)"
           fi
           git rev-parse HEAD > "$OUT/.built-from"
 
