@@ -125,12 +125,18 @@ enum HLSGenerator {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    /// Generate a main playlist with video and audio.
+    /// Generate a main playlist with video and audio. With `audioOnly`
+    /// (codecs, bandwidth) it also lists the audio playlist as a variant of
+    /// its own, after the video one so playback starts with the picture:
+    /// capping the item's peak bit rate below the video variant then moves
+    /// AVPlayer onto it within the same item — no rebuild, no seek, so the
+    /// sound runs on (backgrounding, `WatchViewController+BackgroundAudioOnly`).
     static func mainPlaylist(
         bandwidth: Int,
         codecs: String,
         resolution: String,
-        uris: PlaylistURIs
+        uris: PlaylistURIs,
+        audioOnly: (codecs: String, bandwidth: Int)? = nil
     ) -> String {
         var lines: [String] = []
         lines.append("#EXTM3U")
@@ -148,6 +154,15 @@ enum HLSGenerator {
             + ",AUDIO=\"audio\""
         lines.append(streamInf)
         lines.append(uris.video)
+        if let audioOnly {
+            // The same playlist the video variant takes its sound from: the
+            // audio carries on across the switch.
+            lines.append(
+                "#EXT-X-STREAM-INF:BANDWIDTH=\(audioOnly.bandwidth)"
+                    + ",CODECS=\"\(audioOnly.codecs)\""
+            )
+            lines.append(uris.audio)
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 
