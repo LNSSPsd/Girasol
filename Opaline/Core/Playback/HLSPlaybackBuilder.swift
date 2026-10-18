@@ -189,10 +189,13 @@ private extension HLSPlaybackBuilder {
         audioSegments: [SidxSegment],
         startTime: CFTimeInterval
     ) -> Result? {
+        // Read once: a probe may prove a form while this build runs.
+        let variant = AudioOnlyMode.soundOnly ? nil : HLSAudioVariant.proven
         let loader = createPlaylistLoader(
             input: input,
             videoSegments: videoSegments,
-            audioSegments: audioSegments
+            audioSegments: audioSegments,
+            variant: variant
         )
         let elapsed = CACurrentMediaTime() - startTime
         let msg = String(
@@ -200,7 +203,9 @@ private extension HLSPlaybackBuilder {
             elapsed
         )
         AppLog.hls(msg)
-        let urlStr = "\(HLSGenerator.scheme)://\(AudioOnlyMode.entryPlaylist)"
+        let entry = variant != nil && !AudioOnlyMode.isEnabled
+            ? HLSAudioVariant.entryPath : AudioOnlyMode.entryPlaylist
+        let urlStr = "\(HLSGenerator.scheme)://\(entry)"
         guard let plURL = URL(string: urlStr) else {
             return nil
         }
@@ -214,13 +219,17 @@ private extension HLSPlaybackBuilder {
         )
         let item = AVPlayerItem(asset: asset)
         PlaybackBufferPolicy.configure(item: item)
+        if !AudioOnlyMode.soundOnly {
+            HLSAudioVariant.probeIfDue(loader: loader, headers: input.headers)
+        }
         return Result(playerItem: item, loader: loader)
     }
 
     static func createPlaylistLoader(
         input: BuildInput,
         videoSegments: [SidxSegment],
-        audioSegments: [SidxSegment]
+        audioSegments: [SidxSegment],
+        variant: HLSAudioVariant.Form?
     ) -> HLSPlaylistLoader {
         let loader = HLSPlaylistLoader()
         registerMediaPlaylists(
@@ -233,7 +242,8 @@ private extension HLSPlaybackBuilder {
             on: loader,
             input: input,
             videoSegments: videoSegments,
-            audioSegments: audioSegments
+            audioSegments: audioSegments,
+            variant: variant
         )
         return loader
     }
@@ -262,13 +272,17 @@ private extension HLSPlaybackBuilder {
         )
         loader.register(path: "video.m3u8", content: videoPl)
         loader.register(path: "audio.m3u8", content: audioPl)
+        // The audio-only variant's own copy, for the forms that do not share
+        // the rendition's URI.
+        loader.register(path: HLSAudioVariant.ownPath, content: audioPl)
     }
 
     static func registerMainPlaylists(
         on loader: HLSPlaylistLoader,
         input: BuildInput,
         videoSegments: [SidxSegment],
-        audioSegments: [SidxSegment]
+        audioSegments: [SidxSegment],
+        variant: HLSAudioVariant.Form?
     ) {
         let vidFmt = input.videoFormat
         let audFmt = input.audioFormat
@@ -289,6 +303,22 @@ private extension HLSPlaybackBuilder {
             uris: uris
         )
         loader.register(path: "master.m3u8", content: mainPl)
+        // Every form's main playlist: the probe tries them, and the proven
+        // one is what the item opens.
+        for form in HLSAudioVariant.Form.allCases {
+            let withAudio = HLSGenerator.mainPlaylist(
+                bandwidth: HLSGenerator.peakBitrate(videoSegments, fallback: vidFmt.bitrate)
+                    + audioPeak,
+                codecs: codecs,
+                resolution: "\(width)x\(height)",
+                uris: uris,
+                audioOnly: form.variant(codecs: audFmt.codecs, bandwidth: audioPeak)
+            )
+            loader.register(path: HLSAudioVariant.probePath(form), content: withAudio)
+            if form == variant {
+                loader.register(path: HLSAudioVariant.entryPath, content: withAudio)
+            }
+        }
         let audioOnlyPl = HLSGenerator.audioOnlyMainPlaylist(
             audioCodecs: audFmt.codecs,
             audioBandwidth: audioPeak,
