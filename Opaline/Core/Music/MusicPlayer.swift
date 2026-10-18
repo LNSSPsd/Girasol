@@ -71,6 +71,9 @@ final class MusicPlayer: NSObject {
     /// The whole context in its own order: repeat-all starts it over, and
     /// shuffle off puts `upcoming` back in this order.
     private var context: [Video] = []
+    /// The album or playlist's title while a mix stands in for it, for
+    /// repeat-all turned on afterwards (`dropEndless`).
+    private var titleBeforeEndless: String?
     private var history: [Video] = []
     private var facade = PlaybackFacade()
     private var token = CancellationToken()
@@ -430,12 +433,31 @@ final class MusicPlayer: NSObject {
         switch repeatMode {
         case .off:
             repeatMode = .all
+            dropEndless()
         case .all:
             repeatMode = .one
         case .one:
             repeatMode = .off
         }
+        updateItemEndAction()
         queueChanged()
+    }
+
+    /// Repeat-all turned on after the album or playlist ran out: the mix
+    /// (or recommendations) already lined up after it would play before
+    /// the restart, so it goes, and the context's own title comes back.
+    /// Artist radio is the context itself and stays.
+    private func dropEndless() {
+        guard let radio, !radio.joinsContext else {
+            return
+        }
+        let contextIds = Set(context.map(\.id))
+        upcoming.removeAll { !contextIds.contains($0.id) }
+        self.radio = nil
+        radioGeneration += 1
+        isFetchingRadio = false
+        waitingForMore = false
+        contextTitle = titleBeforeEndless ?? contextTitle
     }
 
     private func queueChanged() {
@@ -472,6 +494,7 @@ final class MusicPlayer: NSObject {
                 playlistId: account ? collectionId : nil,
                 joinsContext: false
             )
+            titleBeforeEndless = contextTitle
             contextTitle = account ? "recommendations" : "your mix"
             AppLog.player(
                 "music: context done, "
@@ -780,6 +803,12 @@ final class MusicPlayer: NSObject {
         if repeatMode == .one {
             // The queue player would move on to the preloaded item.
             prefetcher.discard(unless: nil, from: player)
+            guard player.currentItem === item else {
+                // Repeat turned on as the song ended: the queue player has
+                // already dropped it, so it loads again.
+                load()
+                return
+            }
             seek(to: 0)
             player.play()
             return
@@ -1030,8 +1059,18 @@ final class MusicPlayer: NSObject {
         return queue.isEmpty && !context.contains { $0.id == next.id }
     }
 
+    /// Repeat-one keeps the finished item (`.none`): with `.advance` the
+    /// queue player drops it at its end, before `itemDidFinish` could seek
+    /// it back to 0, and playback just stopped.
     private func updateItemEndAction() {
-        let action: AVPlayer.ActionAtItemEnd = stopsAfterCurrent ? .pause : .advance
+        let action: AVPlayer.ActionAtItemEnd
+        if stopsAfterCurrent {
+            action = .pause
+        } else if repeatMode == .one {
+            action = .none
+        } else {
+            action = .advance
+        }
         if player.actionAtItemEnd != action {
             player.actionAtItemEnd = action
         }
