@@ -12,10 +12,13 @@
 [![Changes: CC0 1.0](https://img.shields.io/badge/changes-CC0%201.0-lightgrey)](LICENSES/CC0-1.0.txt)
 
 <!-- Screenshots: drop the images into screenshots/ under these names. -->
-<img src="screenshots/music-home.png" width="24%" alt="Music home">
+<img src="screenshots/music-library.png" width="24%" alt="Music library">
 <img src="screenshots/music-player.png" width="24%" alt="Music player with lyrics">
 <img src="screenshots/music-album.png" width="24%" alt="Album">
 <img src="screenshots/music-import.png" width="24%" alt="Music Import">
+<img src="screenshots/music-lyrics.png" width="24%" alt="Music Lyrics">
+<img src="screenshots/music-queue.png" width="24%" alt="Music Queue">
+<img src="screenshots/video-channel.png" width="24%" alt="Video channel">
 <img src="screenshots/video-player.png" width="24%" alt="Video player">
 
 </div>
