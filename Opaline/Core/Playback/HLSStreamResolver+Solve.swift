@@ -1,5 +1,6 @@
 import Foundation
 import JavaScriptCore
+import QuartzCore
 
 // MARK: - n / sig challenge solving
 
@@ -15,6 +16,16 @@ extension HLSStreamResolver {
         "var meriyah = (typeof lib !== 'undefined' && lib.meriyah)"
             + " || undefined; var astring = (typeof lib !== 'undefined'"
             + " && lib.astring) || undefined;"
+    }
+
+    /// iOS 14's JavaScriptCore has no `Object.hasOwn` (Safari 15.4); the
+    /// solver library calls it while loading, and without it nothing loads
+    /// ("jsc is not a function") and every challenge went to the remote
+    /// solver. Checked in Node with `Object.hasOwn` deleted: the same
+    /// two errors, and with this the same answers as natively.
+    static var solverPolyfills: String {
+        "if (!Object.hasOwn) { Object.hasOwn = function (o, k) {"
+            + " return Object.prototype.hasOwnProperty.call(o, k); }; }"
     }
 
     static var solverWrapper: String {
@@ -153,6 +164,7 @@ extension HLSStreamResolver {
         context.exceptionHandler = { _, value in
             AppLog.player("hlsResolve: JS exception \(value?.toString() ?? "")")
         }
+        context.evaluateScript(Self.solverPolyfills)
         context.evaluateScript(WebViewHLSSolverJS.lib)
         context.evaluateScript(Self.solverBridge)
         context.evaluateScript(WebViewHLSSolverJS.core)
@@ -171,9 +183,16 @@ extension HLSStreamResolver {
               let fn = context.objectForKeyedSubscript("__ytSolve") else {
             return nil
         }
+        let started = CACurrentMediaTime()
         let value = fn.call(withArguments: [baseJS, kind.rawValue, unsolved])
         let result = value?.toString()
         JSGarbageCollect(context.jsGlobalContextRef)
+        if let result, !result.isEmpty, !result.hasPrefix("ERR:") {
+            AppLog.player(
+                "hlsResolve: on-device \(kind.rawValue) solved in"
+                    + " \(Int((CACurrentMediaTime() - started) * 1_000)) ms"
+            )
+        }
         guard let solved = result, !solved.isEmpty, !solved.hasPrefix("ERR:") else {
             if let result, result.hasPrefix("ERR:") {
                 AppLog.player("hlsResolve: solver \(result)")
