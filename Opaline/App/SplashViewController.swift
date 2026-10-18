@@ -11,10 +11,12 @@ final class SplashViewController: UIViewController {
 
     var onComplete: (() -> Void)?
 
-    /// The triangle's share of the screen width, matching the launch storyboard
-    /// so the handover from it is seamless. Only the background changes after
-    /// that — the mark holds this size throughout, in both themes.
-    private let logoWidth: CGFloat = 0.15
+    /// The mark's share of the screen width. The launch screen draws
+    /// SplashMark at its own size (124 pt), which this matches on a 414 pt
+    /// wide iPhone, so the handover from it does not jump. Only the
+    /// background changes after that — the mark holds this size throughout,
+    /// in both themes.
+    private let logoWidth: CGFloat = 0.3
 
     private let logoView = UIImageView()
 
@@ -35,9 +37,8 @@ final class SplashViewController: UIViewController {
     // MARK: - UI
 
     private func setupUI() {
-        // Drawn as-is, never as a template: the mark carries the opal gradient
-        // itself, which is the whole point of it — a tint would flatten the brand
-        // back into the plain triangle it used to be on the dark theme.
+        // Drawn as-is, never as a template: the mark is the icon's flower in its
+        // own colours (`icon/v4b-splash.svg`), on black and white alike.
         logoView.image = UIImage(named: "SplashMark")
         logoView.contentMode = .scaleAspectFit
         logoView.translatesAutoresizingMaskIntoConstraints = false
@@ -54,7 +55,7 @@ final class SplashViewController: UIViewController {
             logoView.widthAnchor.constraint(
                 equalTo: view.widthAnchor, multiplier: logoWidth
             ),
-            logoView.heightAnchor.constraint(equalTo: logoView.widthAnchor, multiplier: 1.017)
+            logoView.heightAnchor.constraint(equalTo: logoView.widthAnchor)
         ])
     }
 
