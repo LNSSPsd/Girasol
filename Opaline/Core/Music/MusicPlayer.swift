@@ -714,6 +714,16 @@ final class MusicPlayer: NSObject {
         NowPlayingService.shared.updatePosition(seconds)
     }
 
+    /// Stops, and calls back (main queue) once the saved session is gone
+    /// from disk as well: `stop` deletes it on the writer queue, which would
+    /// otherwise race whatever is put there next (the Opaline import).
+    func stop(then completion: @escaping () -> Void) {
+        stop()
+        sessionWriter.async {
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
     func stop() {
         AudioOnlyMode.soundOnly = false
         endCrossfade()

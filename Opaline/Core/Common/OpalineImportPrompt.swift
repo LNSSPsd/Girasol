@@ -61,10 +61,16 @@ enum OpalineImportPrompt {
     }
 
     private static func run(_ container: URL, from controller: UIViewController) {
-        // Nothing may write its own state over what comes in.
-        MusicPlayer.shared.stop()
         let progress = UIAlertController(title: "Importing from Opaline…", message: nil, preferredStyle: .alert)
         controller.present(progress, animated: true)
+        // Nothing may write its own state over what comes in: the player
+        // is stopped, and its session file deleted, before the copy starts.
+        MusicPlayer.shared.stop {
+            copy(container, progress: progress, from: controller)
+        }
+    }
+
+    private static func copy(_ container: URL, progress: UIAlertController, from controller: UIViewController) {
         OPOpalineImport.runImport(from: container) { summary, failure in
             guard let summary else {
                 progress.dismiss(animated: true) {
@@ -80,8 +86,33 @@ enum OpalineImportPrompt {
             }
             UserDefaults.standard.set(summary, forKey: resultKey)
             UserDefaults.standard.synchronize()
-            AppLog.log("App", "opaline import done, closing")
+            AppLog.log("App", "opaline import done: \(summary)")
+            progress.dismiss(animated: true) {
+                finished(summary, from: controller)
+            }
+        }
+    }
+
+    /// What the app holds in memory predates the import, so it has to start
+    /// again; iOS cannot restart an app, so it closes, after saying so (a
+    /// silent `exit` looked like a crash). Never through the background: its
+    /// handlers save in-memory state (watch progress, the music session)
+    /// over what was just imported. Leaving the app with the alert up closes
+    /// it at once, before they run.
+    private static func finished(_ summary: String, from controller: UIViewController) {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
+        ) { _ in
             exit(0)
         }
+        let alert = UIAlertController(
+            title: "Import complete",
+            message: "\(summary).\n\nGirasol closes now to start with it. Open it again from the Home Screen.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Close Girasol", style: .default) { _ in
+            exit(0)
+        })
+        controller.present(alert, animated: true)
     }
 }
