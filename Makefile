@@ -90,8 +90,13 @@ OBJC_HDRS := $(shell find Opaline -name '*.h')
 OBJC_OBJS := $(patsubst %.m,$(OUT)/objc/%.o,$(OBJC_SRCS))
 BRIDGING_HEADER := Opaline/Opaline-Bridging-Header.h
 CLANG := $(SWIFT_TC)/bin/clang
+# No autolinking: importing AVFoundation would add AVFAudio.framework as a
+# load command (see SWIFTFLAGS), and dyld refuses to start the app on iOS
+# 14.3. The frameworks the Objective-C code uses come from the Swift side.
 OBJCFLAGS := -target arm64-apple-ios$(MIN_OS) -isysroot $(SDKROOT) \
-	-fobjc-arc -fmodules -O2 -Wall -Wno-unused-parameter
+	-fobjc-arc -fmodules -fno-autolink -O2 -Wall -Wno-unused-parameter
+# What only the Objective-C code uses, linked by name instead.
+OBJC_FRAMEWORKS := WebKit
 # Shared with the app target, as in the Xcode project.
 APPEX_SRCS := $(wildcard OpalineOpenIn/*.swift) Opaline/Core/Common/YouTubeLinkParser.swift
 PLIST := python3 scripts/linux_info_plist.py --version $(VERSION) \
@@ -112,7 +117,10 @@ $(OUT)/Opaline: $(APP_SRCS) $(OBJC_OBJS) $(OBJC_HDRS) Makefile
 		-import-objc-header $(CURDIR)/$(BRIDGING_HEADER) \
 		$(addprefix $(CURDIR)/,$(APP_SRCS)) \
 		$(foreach o,$(OBJC_OBJS),-Xlinker $(CURDIR)/$(o)) \
+		$(foreach f,$(OBJC_FRAMEWORKS),-Xlinker -framework -Xlinker $(f)) \
 		-o $(CURDIR)/$@
+	@if $(SWIFT_TC)/bin/otool -L $@ | grep -q AVFAudio.framework; then \
+		echo "error: $@ loads AVFAudio.framework, which iOS 14.3 does not have"; rm -f $@; exit 1; fi
 
 $(OUT)/OpalineOpenIn: $(APPEX_SRCS) Makefile
 	@mkdir -p $(OUT)/obj-appex
