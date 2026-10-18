@@ -33,6 +33,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         NotificationCenter.default.addObserver(forName: .OPMusicDiskCacheDidChange, object: nil, queue: .main) { _ in
             OPAudioCache.trim()
         }
+        // A song downloaded since needs no cached copy.
+        NotificationCenter.default.addObserver(forName: DownloadStore.didChangeNotification, object: nil, queue: .main) { _ in
+            OPAudioCache.trim()
+        }
         OPAudioCache.trim()
         configureServices(application)
         // The player has to know how the phone is held the moment it opens —

@@ -27,6 +27,10 @@ extension VideoDownloader {
         let videoPart = videoPartFile(videoId)
         let audioPart = audioPartFile(videoId)
         guard let videoFormat = option.video else {
+            if copyCachedAudio(videoId: videoId, option: option, to: audioPart) {
+                mux(videoId: videoId, option: option, parts: (videoPart, audioPart))
+                return
+            }
             fetchAudio(videoId: videoId, option: option, parts: (videoPart, audioPart))
             return
         }
@@ -63,6 +67,26 @@ extension VideoDownloader {
             }
             self?.mux(videoId: videoId, option: option, parts: parts)
         }
+    }
+
+    /// A song music mode has cached in full (`OPAudioCache`) is the very
+    /// file this download would fetch — same itag, same bytes — so it is
+    /// taken from there: downloading a cached song only makes it permanent.
+    private func copyCachedAudio(videoId: String, option: DownloadOption, to part: URL) -> Bool {
+        guard let cached = OPAudioCache.completeFileURL(forVideoId: videoId),
+              Self.bytesOnDisk(at: cached) == option.audio.contentLength
+        else {
+            return false
+        }
+        try? FileManager.default.removeItem(at: part)
+        do {
+            try FileManager.default.copyItem(at: cached, to: part)
+        } catch {
+            AppLog.downloads("\(videoId): cached copy unusable, downloading — \(error)")
+            return false
+        }
+        AppLog.downloads("\(videoId): taken from the audio cache, nothing downloaded")
+        return true
     }
 
     func fail(videoId: String, error: Error) {
