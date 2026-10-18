@@ -1001,8 +1001,22 @@ final class MusicPlayer: NSObject {
         consecutiveFailures = 0
         recordPlay(track)
         if player.currentItem !== ready.item {
-            player.removeAllItems()
-            player.insert(ready.item, after: nil)
+            // The end notice can come before the queue has moved on. Queued
+            // already, the song may have started: taken out and put back, it
+            // played its first tenth of a second again. The queue moves on.
+            let queued = player.items().contains(ready.item)
+            AppLog.player(String(
+                format: "music: %@ handed over %@ at %.2f s", track.id,
+                queued ? "from the queue" : "afresh", CMTimeGetSeconds(ready.item.currentTime())
+            ))
+            if queued {
+                while let head = player.currentItem, head !== ready.item {
+                    player.remove(head)
+                }
+            } else {
+                player.removeAllItems()
+                player.insert(ready.item, after: nil)
+            }
         }
         checkStarted(ready.item, track: track)
         if outgoing == nil {
