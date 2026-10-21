@@ -1,4 +1,5 @@
 // swiftlint:disable file_length
+import LinkPresentation
 import UIKit
 
 /// Settings popup presented as a sheet from the toolbar. One class serves
@@ -854,7 +855,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             .appendingPathComponent("girasol_debug.log")
         try? data.write(to: tempURL)
         let activity = UIActivityViewController(
-            activityItems: [tempURL],
+            activityItems: [LogFileItem(url: tempURL)],
             applicationActivities: nil
         )
         configureCenteredPopover(activity)
@@ -889,6 +890,40 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
             height: 0
         )
         pop.permittedArrowDirections = []
+    }
+}
+
+// MARK: - LogFileItem
+
+/// The log file with its own header icon. Given a bare file URL, the share
+/// sheet draws a document icon from the app's icon in this process, through
+/// Core Image's GL context, and that crashes on iOS 14.3 (SIGSEGV in
+/// `CI::GLContext` under `LICreateIconForImages`).
+private final class LogFileItem: NSObject, UIActivityItemSource {
+    private let url: URL
+
+    init(url: URL) {
+        self.url = url
+    }
+
+    func activityViewControllerPlaceholderItem(_ controller: UIActivityViewController) -> Any {
+        url
+    }
+
+    func activityViewController(
+        _ controller: UIActivityViewController,
+        itemForActivityType activityType: UIActivity.ActivityType?
+    ) -> Any? {
+        url
+    }
+
+    func activityViewControllerLinkMetadata(_ controller: UIActivityViewController) -> LPLinkMetadata? {
+        let metadata = LPLinkMetadata()
+        metadata.title = url.lastPathComponent
+        if let icon = UIImage(systemName: "doc.text") {
+            metadata.iconProvider = NSItemProvider(object: icon)
+        }
+        return metadata
     }
 }
 
