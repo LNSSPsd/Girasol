@@ -1686,7 +1686,11 @@ final class MusicPlayer: NSObject {
         mixIds.insert(track.id)
         current = track
         currentFromQueue = false
-        AppLog.player("music: \(track.id) stands in (\(outage?.consumed.contains(track.id) == true ? "played early" : "from the device"))")
+        let ahead = queue.firstIndex { $0.id == track.id }.map { "queue #\($0 + 1)" }
+            ?? upcoming.firstIndex { $0.id == track.id }.map { "upcoming #\($0 + 1)" }
+            ?? context.firstIndex { $0.id == track.id }.map { "context #\($0 + 1), repeat-all" }
+            ?? "from the device, \(track.musicArtist)"
+        AppLog.player("music: \(track.id) stands in (\(ahead); \(upcoming.count) upcoming, \(context.count) in context)")
     }
 
     /// A song on the device for an outage: the first one further on from
@@ -1697,25 +1701,31 @@ final class MusicPlayer: NSObject {
     /// nothing is related, and any when nothing was counted. Songs played
     /// lately only when nothing else is as close.
     private func standIn() -> Video? {
-        let skip = (outage?.played ?? []).union(current.map { [$0.id] } ?? [])
-        let usable = { (track: Video) in !skip.contains(track.id) && Self.playableOffline(track) }
+        // A music video and its song are one track: lists that were swapped
+        // to songs (the context) and lists that were not (history, the play
+        // log) must agree, or an album's own first track comes back as an
+        // "other" song.
+        let key = { (id: String) in MusicSongVersions.songId(of: id) ?? id }
+        let skip = Set(((outage?.played ?? []).union(current.map { [$0.id] } ?? [])).map(key))
+        let usable = { (track: Video) in !skip.contains(key(track.id)) && Self.playableOffline(track) }
         let wraps = repeatMode == .all && !isShuffled ? context : []
         if let early = (queue + upcoming + wraps).first(where: usable) {
             return early
         }
         let plays = MusicPlayLog.shared.trackPlays()
         let saved = MusicDownloads.collections().flatMap { MusicDownloads.savedTracks(of: $0.id) ?? [] }
-        // Not the context: its earlier tracks would loop the album or
-        // playlist back to its start.
-        let earlier = Set(context.map(\.id))
+        // Not the context, nor what played before in it (history keeps the
+        // ids as they were picked): its earlier tracks would loop the album
+        // or playlist back to its start.
+        let earlier = Set((context + history.suffix(context.count)).map { key($0.id) })
         var seen = Set<String>()
         let pool = (history.reversed() + recent.reversed().map(\.video) + plays.map(\.video) + saved)
-            .filter { !earlier.contains($0.id) && seen.insert($0.id).inserted && usable($0) }
+            .filter { !earlier.contains(key($0.id)) && seen.insert(key($0.id)).inserted && usable($0) }
         guard !pool.isEmpty else {
             return nil
         }
-        let counts = Dictionary(plays.map { ($0.video.id, $0.plays.count) }, uniquingKeysWith: max)
-        let lately = Set(history.suffix(30).map(\.id))
+        let counts = Dictionary(plays.map { (key($0.video.id), $0.plays.count) }, uniquingKeysWith: +)
+        let lately = Set(history.suffix(30).map { key($0.id) })
         let anchor = outage?.cutOff ?? naturalNext ?? current
         func related(_ track: Video) -> Int {
             guard let anchor else {
@@ -1726,7 +1736,7 @@ final class MusicPlayer: NSObject {
             return sameArtist ? 1 : 0
         }
         func rank(_ track: Video) -> (Int, Int, Int) {
-            (related(track), lately.contains(track.id) ? 0 : 1, counts[track.id] ?? 0)
+            (related(track), lately.contains(key(track.id)) ? 0 : 1, counts[key(track.id)] ?? 0)
         }
         return pool.max { rank($0) < rank($1) || (rank($0) == rank($1) && $0.id > $1.id) }
     }
