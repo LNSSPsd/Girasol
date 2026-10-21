@@ -911,6 +911,9 @@ final class MusicPlayer: NSObject {
         guard let item = note.object as? AVPlayerItem, item === playingItem else {
             return
         }
+        if endedEarly(item) {
+            return
+        }
         if stopsAfterCurrent {
             // The sleep timer waited for this song (or for the album or
             // playlist it ends): the next one is made ready, paused, so Play
@@ -944,6 +947,38 @@ final class MusicPlayer: NSObject {
     /// queue player drops a finished item, possibly before its end
     /// notification is handled.
     private var playingItem: AVPlayerItem?
+    /// YouTube's length of `playingItem`'s song, to tell its real end.
+    private var playingLength: Double?
+    /// Times the playing track was loaded again after ending early.
+    private var earlyEnds: (id: String, count: Int)?
+
+    /// AVFoundation learns the length of a song played through the disk cache
+    /// by reading every fragment (its header says 0, `OPAudioCache`); on a
+    /// slow network it can settle for what has arrived, and the song "ends"
+    /// there. An end that far before
+    /// YouTube's length loads the song again from where it stopped (twice at
+    /// most; by then the file is usually complete).
+    private func endedEarly(_ item: AVPlayerItem) -> Bool {
+        let reached = CMTimeGetSeconds(item.currentTime())
+        guard let track = current, let length = playingLength, reached.isFinite, length - reached > 10 else {
+            return false
+        }
+        let count = earlyEnds?.id == track.id ? earlyEnds?.count ?? 0 : 0
+        guard count < 2 else {
+            return false
+        }
+        earlyEnds = (track.id, count + 1)
+        AppLog.player(String(
+            format: "music: %@ ended at %.1f s of %.1f s — loading it again from there", track.id, reached, length
+        ))
+        // The queue player may already be on the preloaded song.
+        prefetcher.discard(unless: nil, from: player)
+        player.pause()
+        player.removeAllItems()
+        playingItem = nil
+        load(startAt: max(0, reached - 1))
+        return true
+    }
 
     /// Every track starts at `startAt` (0 unless resuming), never at the
     /// position the watch history remembers for that video.
@@ -1113,6 +1148,7 @@ final class MusicPlayer: NSObject {
         configureFacade()
         resourceLoader = ready.resourceLoader
         playingItem = ready.item
+        playingLength = ready.duration
         isLoading = false
         consecutiveFailures = 0
         recordPlay(track)
@@ -2027,6 +2063,7 @@ extension MusicPlayer: PlaybackContext {
         PlaybackBufferPolicy.configure(item: prepared.item)
         prepared.item.preferredForwardBufferDuration = Self.bufferSeconds
         playingItem = prepared.item
+        playingLength = prepared.duration
         player.removeAllItems()
         player.insert(prepared.item, after: nil)
         if let resumeAt {
