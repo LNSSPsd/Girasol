@@ -129,6 +129,12 @@ final class MusicPlayer: NSObject {
         current != nil
     }
 
+    /// Nothing audible while the network is out (`Outage`): still meant to
+    /// be playing, so pause stops the wait.
+    var isWaitingForNetwork: Bool {
+        outage?.idle == true
+    }
+
     /// Whether `videoId` is the playing track — as itself, or as the music
     /// video / song it stands for (`MusicSongVersions`): a list shows the
     /// MV while its song plays, and the other way round.
@@ -143,28 +149,52 @@ final class MusicPlayer: NSObject {
 
     /// The track that plays when this one ends.
     var nextTrack: Video? {
-        let offline = NetworkType.isOffline
-        if let index = firstPlayable(in: queue, offline: offline) {
-            return queue[index]
-        }
-        if let index = firstPlayable(in: upcoming, offline: offline) {
-            return upcoming[index]
-        }
-        // A shuffled restart is drawn at random when it happens, so it has
-        // no known first track to preload.
-        guard repeatMode == .all, !isShuffled, let index = firstPlayable(in: context, offline: offline) else {
-            return nil
-        }
-        return context[index]
+        plannedNext()?.track
     }
 
-    /// Offline only downloaded tracks can play; the others are passed over
-    /// but stay where they are, for when the network is back.
-    private func firstPlayable(in tracks: [Video], offline: Bool) -> Int? {
-        guard offline else {
-            return tracks.isEmpty ? nil : 0
+    /// The head of the queue, else of the context; the context from its
+    /// start for repeat-all. A shuffled restart is drawn at random when it
+    /// happens, so it has no known first track to preload.
+    private var naturalNext: Video? {
+        if let track = queue.first ?? upcoming.first {
+            return track
         }
-        return tracks.firstIndex { DownloadStore.isDownloaded($0.id) || OPAudioCache.isComplete(forVideoId: $0.id) }
+        guard repeatMode == .all, !isShuffled else {
+            return nil
+        }
+        return context.first
+    }
+
+    /// What plays next: the natural next track, or a song on the device
+    /// standing in for it (`standIn`) while it cannot play — the device is
+    /// offline, or an outage is being bridged and the network has not
+    /// proved itself back (the next track preloaded, when preloading is on).
+    private func plannedNext() -> (track: Video, standsIn: Bool)? {
+        let natural = naturalNext
+        let naturalPlays = natural.map(Self.playableOffline) ?? false
+        let blocked: Bool
+        if let outage, outage.bridging {
+            let unproven = natural.map { OPMusicSettings.cacheNext && !prefetcher.isReady(for: $0) } ?? true
+            blocked = !naturalPlays && (!outage.reachable || unproven)
+        } else {
+            blocked = NetworkType.isOffline && !naturalPlays
+        }
+        if blocked, let song = standIn() {
+            return (song, true)
+        }
+        if blocked, outage?.reachable != true {
+            return nil
+        }
+        return natural.map { ($0, false) }
+    }
+
+    /// Downloaded, or cached in full — as itself or as its song version.
+    private static func playableOffline(_ track: Video) -> Bool {
+        isOnDevice(track.id) || MusicSongVersions.songId(of: track.id).map(isOnDevice) == true
+    }
+
+    private static func isOnDevice(_ videoId: String) -> Bool {
+        DownloadStore.isDownloaded(videoId) || OPAudioCache.isComplete(forVideoId: videoId)
     }
 
     var currentTime: TimeInterval {
@@ -242,6 +272,16 @@ final class MusicPlayer: NSObject {
             name: .AVPlayerItemDidPlayToEndTime,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime, object: nil, queue: .main
+        ) { [weak self] note in
+            self?.itemDidFail(note)
+        }
+        for name in [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.updateKeepAlive()
+            }
+        }
     }
 
     /// Time, play state and end-of-song behaviour follow the playing player.
@@ -263,6 +303,7 @@ final class MusicPlayer: NSObject {
         }
         rateObservation = player.observe(\.timeControlStatus) { [weak self] _, _ in
             DispatchQueue.main.async {
+                self?.watchStall()
                 self?.postChange()
             }
         }
@@ -320,6 +361,9 @@ final class MusicPlayer: NSObject {
         guard tracks.indices.contains(start) else {
             return
         }
+        endOutage(purging: false, "a new start")
+        resume = nil
+        currentFromQueue = false
         radio = title != nil || continuation != nil
             ? Radio(continuation: continuation, isMix: false, signedIn: false, playlistId: nil, joinsContext: true)
             : nil
@@ -406,8 +450,10 @@ final class MusicPlayer: NSObject {
         guard queue.indices.contains(position) else {
             return
         }
+        endOutage(purging: true, "a queue entry chosen")
         retireCurrent()
         current = queue[position]
+        currentFromQueue = true
         queue.removeFirst(position + 1)
         load()
     }
@@ -417,9 +463,11 @@ final class MusicPlayer: NSObject {
         guard upcoming.indices.contains(position) else {
             return
         }
+        endOutage(purging: true, "an upcoming track chosen")
         retireCurrent()
         history += upcoming[..<position]
         current = upcoming[position]
+        currentFromQueue = false
         upcoming.removeFirst(position + 1)
         load()
     }
@@ -479,7 +527,7 @@ final class MusicPlayer: NSObject {
         postChange()
         saveContext()
         // The preloaded track may no longer be the next one.
-        prefetcher.discard(unless: nextTrack, from: player)
+        prefetcher.discard(unless: preloadTarget, from: player)
         prefetchIfDue()
     }
 
@@ -492,10 +540,10 @@ final class MusicPlayer: NSObject {
     /// a share. With "YouTube Music's recommendations" on (and the web
     /// account), YouTube Music's own continuation instead: the finished
     /// playlist's automix as the account sees it. Radio from the last track
-    /// if either fails. Offline there is nothing to fetch, so downloads
-    /// play out and playback stops.
+    /// if either fails. Offline, or in an outage, there is nothing to fetch:
+    /// songs on the device stand in (`standIn`) until the network is back.
     private func topUpRadioIfNeeded() {
-        guard let current, !NetworkType.isOffline else {
+        guard let current, !NetworkType.isOffline, outage == nil else {
             return
         }
         if radio == nil, queue.isEmpty, upcoming.isEmpty, repeatMode != .all {
@@ -673,6 +721,11 @@ final class MusicPlayer: NSObject {
         // the user wins.
         endCrossfade()
         holdNextStart = false
+        if outage?.idle == true {
+            // Pause while waiting for the network: stop waiting.
+            cancelOutage()
+            return
+        }
         if player.timeControlStatus == .paused {
             if player.currentItem == nil, isActive, !isLoading {
                 // A restored session: picks up where it was left.
@@ -699,6 +752,7 @@ final class MusicPlayer: NSObject {
             seek(to: 0)
             return
         }
+        endOutage(purging: true, "previous")
         // The track left goes back to the head of what comes next.
         if contextTitle != nil || !upcoming.isEmpty {
             upcoming.insert(playing, at: 0)
@@ -706,6 +760,7 @@ final class MusicPlayer: NSObject {
             queue.insert(playing, at: 0)
         }
         current = previous
+        currentFromQueue = false
         load()
     }
 
@@ -726,6 +781,8 @@ final class MusicPlayer: NSObject {
     }
 
     func stop() {
+        endOutage(purging: false, "stopped")
+        resume = nil
         AudioOnlyMode.soundOnly = false
         endCrossfade()
         sleepFadeTimer?.invalidate()
@@ -766,30 +823,66 @@ final class MusicPlayer: NSObject {
         }
     }
 
-    /// Moves `current` on to the next track per the queue rules. Returns
-    /// false at the end of everything.
+    /// Moves `current` on to the next track per the queue rules (or a song
+    /// standing in for it, see `plannedNext`). Returns false at the end of
+    /// everything.
     private func step() -> Bool {
-        let offline = NetworkType.isOffline
-        if let index = firstPlayable(in: queue, offline: offline) {
-            retireCurrent()
-            current = queue.remove(at: index)
-        } else if let index = firstPlayable(in: upcoming, offline: offline) {
-            retireCurrent()
-            current = upcoming.remove(at: index)
-        } else if repeatMode == .all, case let restart = contextRestart(),
-                  let index = firstPlayable(in: restart, offline: offline) {
-            retireCurrent()
-            upcoming = restart
-            current = upcoming.remove(at: index)
-        } else {
+        guard let plan = plannedNext() else {
+            if outage?.reachable == true {
+                // Back online with nothing left: the mix is asked now, past
+                // any request the outage left hanging.
+                endOutage(purging: true, "back online at the end")
+                radioGeneration += 1
+                isFetchingRadio = false
+            }
             return false
         }
+        if plan.standsIn {
+            if outage == nil {
+                // Offline (no route at all): nothing to retry first.
+                beginOutage(cutOff: nil, at: 0, since: Date(), "offline at \(naturalNext?.id ?? "the end")")
+            }
+            outage?.bridging = true
+            retireCurrent()
+            takeStandIn(plan.track)
+            return true
+        }
+        if let outage, outage.reachable || !outage.bridging {
+            endOutage(purging: true, "\(plan.track.id) next")
+        }
+        takeNatural()
         return true
+    }
+
+    /// The head of the queue, else of the context (from its start again for
+    /// repeat-all) becomes `current`.
+    private func takeNatural() {
+        retireCurrent()
+        if !queue.isEmpty {
+            current = queue.removeFirst()
+            currentFromQueue = true
+        } else if !upcoming.isEmpty {
+            current = upcoming.removeFirst()
+            currentFromQueue = false
+        } else {
+            upcoming = contextRestart()
+            current = upcoming.isEmpty ? current : upcoming.removeFirst()
+            currentFromQueue = false
+        }
     }
 
     private func advance(userInitiated: Bool) {
         let expected = nextTrack
         guard step() else {
+            if outage != nil {
+                // Nothing on the device to stand in: wait, alive, for the
+                // network (`outageTick`).
+                outage?.idle = true
+                isLoading = true
+                player.pause()
+                postChange()
+                return
+            }
             // End of everything: stay on the last track, paused at its end —
             // unless recommendations are on their way (asked for now, if
             // nothing asked yet).
@@ -797,6 +890,9 @@ final class MusicPlayer: NSObject {
             waitingForMore = isFetchingRadio
             player.pause()
             postChange()
+            if waitingForMore {
+                watchForMore()
+            }
             return
         }
         // Preloaded already: switch to it without a new resolve.
@@ -878,10 +974,11 @@ final class MusicPlayer: NSObject {
     }
 
     /// Swaps in the song version when one is known — unless the music video
-    /// is downloaded and the song is not, which would need the network.
+    /// is downloaded or cached and the song is not, which would need the
+    /// network.
     private func applySongVersion(_ track: Video) -> Video {
         guard let song = MusicSongVersions.known(track),
-              !DownloadStore.isDownloaded(track.id) || DownloadStore.isDownloaded(song.id)
+              !Self.isOnDevice(track.id) || Self.isOnDevice(song.id)
         else {
             return track
         }
@@ -934,6 +1031,7 @@ final class MusicPlayer: NSObject {
         guard var track = current else {
             return
         }
+        var startAt = startAt
         let song = applySongVersion(track)
         if song.id != track.id {
             AppLog.player("music: \(track.id) → song version \(song.id)")
@@ -941,8 +1039,14 @@ final class MusicPlayer: NSObject {
             current = song
             track = song
         }
+        if let resume, resume.id == track.id {
+            // The track an outage cut off, from where it was.
+            startAt = resume.at
+            self.resume = nil
+        }
         pendingStart = 0
         waitingForMore = false
+        loadBegan = (Date(), startAt)
         WatchProgressStore.shared.setLinkStart(seconds: startAt, forVideoId: track.id)
         token.cancel()
         token = CancellationToken()
@@ -967,6 +1071,7 @@ final class MusicPlayer: NSObject {
             apiClient: ServiceContainer.watch,
             cancellationToken: token
         )
+        watchLoad(track, token: token)
     }
 
     /// A preloaded track that has not started a few seconds after taking
@@ -974,7 +1079,7 @@ final class MusicPlayer: NSObject {
     /// queued behind a file) is loaded afresh instead of staying silent.
     private func checkStarted(_ item: AVPlayerItem, track: Video) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
-            guard let self, self.playingItem === item, self.current?.id == track.id,
+            guard let self, self.outage == nil, self.playingItem === item, self.current?.id == track.id,
                   self.player.currentItem === item, self.player.timeControlStatus != .paused,
                   CMTimeGetSeconds(item.currentTime()) < 0.5
             else {
@@ -1011,6 +1116,11 @@ final class MusicPlayer: NSObject {
         isLoading = false
         consecutiveFailures = 0
         recordPlay(track)
+        if let resume, resume.id == track.id {
+            ready.item.seek(to: CMTime(seconds: resume.at, preferredTimescale: 600), completionHandler: nil)
+            self.resume = nil
+        }
+        soundStarted()
         if player.currentItem !== ready.item {
             // The end notice can come before the queue has moved on. Queued
             // already, the song may have started: taken out and put back, it
@@ -1309,7 +1419,12 @@ final class MusicPlayer: NSObject {
             ),
             onNext: { [weak self] in self?.next() },
             onPrevious: { [weak self] in self?.previous() },
-            onPause: { [weak self] in self?.postChange() }
+            onPause: { [weak self] in
+                if self?.outage?.idle == true {
+                    self?.cancelOutage()
+                }
+                self?.postChange()
+            }
         )
     }
 
@@ -1318,6 +1433,423 @@ final class MusicPlayer: NSObject {
         let seconds = OPMusicSettings.cacheSeconds
         // "Whole song": longer than any song, so nothing is held back.
         return seconds > 0 ? seconds : 3_600
+    }
+
+    // MARK: - Network outages
+
+    /// The music stopped, or the next song never started, because the
+    /// network does not answer: no route, every packet dropped, or a signal
+    /// so weak that nothing arrives. For 30 s the track is retried (and the
+    /// app kept running, `updateKeepAlive`); then songs on the device stand
+    /// in (`standIn`) until the network is back, and the track cut off
+    /// plays next, from where it stopped.
+    private struct Outage {
+        /// When the sound stopped (or the load began that never made any).
+        let since: Date
+        /// The track cut off, and where. None when recommendations were
+        /// awaited, or offline, when the next track simply stays in place.
+        let cutOff: Video?
+        let position: TimeInterval
+        var lastRetry: Date
+        /// Songs on the device are standing in; the track cut off is back
+        /// at the head of its list.
+        var bridging = false
+        /// Nothing audible: waiting for the network or for a stand-in.
+        var idle = true
+        /// The track cut off failed to load (no load of it is in flight).
+        var loadFailed = false
+        /// The latest probe got through.
+        var reachable = false
+        var lastProbe = Date.distantPast
+        /// There was nothing on the device to stand in.
+        var nothingToPlay = false
+        /// Queue and context tracks played early as stand-ins. Their lists
+        /// stay as they were meanwhile; once the network is back they are
+        /// skipped this time round.
+        var consumed: [String] = []
+        /// Every stand-in played, so none plays twice.
+        var played: Set<String> = []
+    }
+
+    private var outage: Outage?
+    private var outageTimer: Timer?
+    private var probing = false
+    /// The track an outage cut off resumes here when it plays again.
+    private var resume: (id: String, at: TimeInterval)?
+    /// `current` came from the user's queue, not the context: where a track
+    /// cut off goes back to.
+    private var currentFromQueue = false
+    /// When and where the current track's load began.
+    private var loadBegan: (date: Date, at: TimeInterval) = (.distantPast, 0)
+    /// The outage that ended last: a new one on the same track within
+    /// seconds (a signal coming and going) counts from the first.
+    private var lastOutage: (trackId: String?, since: Date, ended: Date)?
+    private var stallGeneration = 0
+    /// The track last reloaded after its stream failed, against a loop.
+    private var lastFailedReload: (id: String, at: Date)?
+    private static let bridgeAfter: TimeInterval = 30
+    /// A load with no sound after this long is treated as an outage.
+    private static let noSoundGrace: TimeInterval = 8
+
+    /// What to preload: back from an outage, the track cut off — preloading
+    /// it is what shows the network is usable again (`plannedNext`).
+    private var preloadTarget: Video? {
+        if let outage, outage.bridging, outage.reachable, let natural = naturalNext {
+            return natural
+        }
+        return nextTrack
+    }
+
+    private func beginOutage(cutOff: Video?, at position: TimeInterval, since: Date, _ reason: String) {
+        guard outage == nil else {
+            return
+        }
+        var since = since
+        if let last = lastOutage, last.trackId == cutOff?.id, Date().timeIntervalSince(last.ended) < 15 {
+            since = min(since, last.since)
+        }
+        let left = max(0, Self.bridgeAfter - Date().timeIntervalSince(since))
+        AppLog.player("music: outage — \(reason); songs on the device stand in after \(Int(left)) s")
+        outage = Outage(since: since, cutOff: cutOff, position: position, lastRetry: Date())
+        isLoading = true
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            self?.outageTick()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        outageTimer = timer
+        postChange()
+    }
+
+    /// `purging`: the tracks played early as stand-ins leave the lists now.
+    private func endOutage(purging: Bool, _ reason: String) {
+        guard let ended = outage else {
+            return
+        }
+        outage = nil
+        outageTimer?.invalidate()
+        outageTimer = nil
+        lastOutage = (ended.cutOff?.id, ended.since, Date())
+        if purging {
+            for id in ended.consumed {
+                if let index = queue.firstIndex(where: { $0.id == id }) {
+                    queue.remove(at: index)
+                } else if let index = upcoming.firstIndex(where: { $0.id == id }) {
+                    upcoming.remove(at: index)
+                }
+            }
+        }
+        AppLog.player(
+            "music: outage over (\(reason)) after \(Int(Date().timeIntervalSince(ended.since))) s, "
+                + "\(ended.played.count) stand-ins, \(purging ? ended.consumed.count : 0) skipped as played"
+        )
+        postChange()
+    }
+
+    /// Pause while waiting for the network: the wait ends, and the track cut
+    /// off stays, paused where it stopped; Play loads it.
+    private func cancelOutage() {
+        guard let ended = outage else {
+            return
+        }
+        token.cancel()
+        facade.reset()
+        prefetcher.discard(unless: nil, from: player)
+        player.pause()
+        player.removeAllItems()
+        playingItem = nil
+        resourceLoader = nil
+        isLoading = false
+        waitingForMore = false
+        endOutage(purging: true, "paused")
+        if ended.bridging, naturalNext != nil {
+            // A stand-in had ended: the track cut off is next (`resume`).
+            takeNatural()
+        } else if current?.id == ended.cutOff?.id {
+            pendingStart = ended.position
+        }
+        saveContext()
+        saveSession()
+        postChange()
+    }
+
+    private func outageTick() {
+        guard let outage else {
+            return
+        }
+        let now = Date()
+        if !outage.bridging, !outage.nothingToPlay, now.timeIntervalSince(outage.since) >= Self.bridgeAfter {
+            startBridge()
+        }
+        guard !probing, now.timeIntervalSince(outage.lastProbe) >= 5 else {
+            return
+        }
+        self.outage?.lastProbe = now
+        probing = true
+        let answer = { [weak self] (reachable: Bool) in
+            self?.probing = false
+            self?.probed(reachable)
+        }
+        if NetworkType.isOffline {
+            answer(false)
+        } else {
+            OPNetworkProbe.probe(answer)
+        }
+    }
+
+    private func probed(_ reachable: Bool) {
+        guard var outage else {
+            return
+        }
+        let changed = outage.reachable != reachable
+        outage.reachable = reachable
+        self.outage = outage
+        if changed {
+            AppLog.player("music: network \(reachable ? "answers" : "out again")")
+        }
+        guard reachable else {
+            return
+        }
+        if outage.bridging {
+            if outage.idle {
+                // Nothing playing: the track cut off, now.
+                advance(userInitiated: false)
+            } else if changed {
+                // Preloaded behind the stand-in; it plays next if that works.
+                queueChanged()
+            }
+            return
+        }
+        guard let cutOff = outage.cutOff else {
+            // Recommendations were awaited: asked again.
+            endOutage(purging: true, "back online, asking for more")
+            radioGeneration += 1
+            isFetchingRadio = false
+            topUpRadioIfNeeded()
+            waitingForMore = isFetchingRadio
+            return
+        }
+        if player.timeControlStatus == .playing {
+            endOutage(purging: true, "\(cutOff.id) playing again")
+            isLoading = false
+            postChange()
+            return
+        }
+        // A load still in flight may only be slow (a weak signal): it gets
+        // time before it is started over.
+        guard outage.loadFailed || Date().timeIntervalSince(outage.lastRetry) >= 20 else {
+            return
+        }
+        self.outage?.lastRetry = Date()
+        self.outage?.loadFailed = false
+        AppLog.player("music: retrying \(cutOff.id) at \(Int(outage.position)) s")
+        load(startAt: outage.position)
+    }
+
+    /// 30 s without sound: a song on the device plays, and the track cut
+    /// off goes back to the head of its list, to resume a little before
+    /// where it stopped once the network is back.
+    private func startBridge() {
+        guard var outage else {
+            return
+        }
+        guard let song = standIn() else {
+            outage.nothingToPlay = true
+            self.outage = outage
+            AppLog.player("music: nothing on the device to stand in, waiting for the network")
+            return
+        }
+        if let cutOff = outage.cutOff, current?.id == cutOff.id {
+            if currentFromQueue {
+                queue.insert(cutOff, at: 0)
+            } else {
+                upcoming.insert(cutOff, at: 0)
+            }
+            if outage.position > 5 {
+                resume = (cutOff.id, outage.position - 2)
+            }
+        } else {
+            retireCurrent()
+        }
+        outage.bridging = true
+        self.outage = outage
+        waitingForMore = false
+        takeStandIn(song)
+        load()
+    }
+
+    private func takeStandIn(_ track: Video) {
+        if (queue + upcoming).contains(where: { $0.id == track.id }) {
+            outage?.consumed.append(track.id)
+        }
+        outage?.played.insert(track.id)
+        // Not chosen: kept to a share of the mix seeds.
+        mixIds.insert(track.id)
+        current = track
+        currentFromQueue = false
+        AppLog.player("music: \(track.id) stands in (\(outage?.consumed.contains(track.id) == true ? "played early" : "from the device"))")
+    }
+
+    /// A song on the device for an outage: the first one further down the
+    /// queue or the context (played early, skipped later); else the one
+    /// most related to the track cut off — same artist, then same album or
+    /// playlist — the most played first; so the most played of all when
+    /// nothing is related, and any when nothing was counted. Songs played
+    /// lately only when nothing else is as close.
+    private func standIn() -> Video? {
+        let skip = (outage?.played ?? []).union(current.map { [$0.id] } ?? [])
+        let usable = { (track: Video) in !skip.contains(track.id) && Self.playableOffline(track) }
+        if let early = (queue + upcoming).first(where: usable) {
+            return early
+        }
+        let plays = MusicPlayLog.shared.trackPlays()
+        let saved = MusicDownloads.collections().flatMap { MusicDownloads.savedTracks(of: $0.id) ?? [] }
+        var seen = Set<String>()
+        let pool = (context + history.reversed() + recent.reversed().map(\.video) + plays.map(\.video) + saved)
+            .filter { seen.insert($0.id).inserted && usable($0) }
+        guard !pool.isEmpty else {
+            return nil
+        }
+        let counts = Dictionary(plays.map { ($0.video.id, $0.plays.count) }, uniquingKeysWith: max)
+        let lately = Set(history.suffix(30).map(\.id))
+        let inContext = Set(context.map(\.id))
+        let anchor = outage?.cutOff ?? naturalNext ?? current
+        func related(_ track: Video) -> Int {
+            guard let anchor else {
+                return 0
+            }
+            let sameArtist = anchor.channelId.map { $0 == track.channelId } ?? false
+                || anchor.musicArtist == track.musicArtist
+            return (sameArtist ? 2 : 0) + (inContext.contains(track.id) ? 1 : 0)
+        }
+        func rank(_ track: Video) -> (Int, Int, Int) {
+            (related(track), lately.contains(track.id) ? 0 : 1, counts[track.id] ?? 0)
+        }
+        return pool.max { rank($0) < rank($1) || (rank($0) == rank($1) && $0.id > $1.id) }
+    }
+
+    /// Sound from a new item: a stand-in started, or the track cut off
+    /// played after all.
+    private func soundStarted() {
+        guard let outage else {
+            return
+        }
+        if outage.bridging {
+            self.outage?.idle = false
+        } else {
+            endOutage(purging: true, "\(current?.id ?? "?") started")
+        }
+    }
+
+    /// A load that brings no sound for a few seconds — a request hanging on
+    /// a dead or crawling connection — starts the outage clock from when it
+    /// began. The load goes on, and plays if it finishes in time.
+    private func watchLoad(_ track: Video, token: CancellationToken) {
+        let began = loadBegan
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.noSoundGrace) { [weak self] in
+            guard let self, self.token === token, self.isLoading, self.outage == nil,
+                  self.current?.id == track.id, !Self.playableOffline(track)
+            else {
+                return
+            }
+            self.beginOutage(
+                cutOff: track, at: began.at, since: began.date,
+                "\(track.id) still loading after \(Int(Self.noSoundGrace)) s"
+            )
+        }
+    }
+
+    /// Recommendations awaited at the end of everything that do not come.
+    private func watchForMore() {
+        let since = Date()
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.noSoundGrace) { [weak self] in
+            guard let self, self.waitingForMore, self.outage == nil else {
+                return
+            }
+            self.beginOutage(cutOff: nil, at: 0, since: since, "more tracks not arriving")
+        }
+    }
+
+    /// The playing stream ran dry and stays dry for a few seconds: an
+    /// outage, counted from when it stalled. Playing again by itself ends it.
+    private func watchStall() {
+        if let outage, !outage.bridging, outage.cutOff?.id == current?.id,
+           player.timeControlStatus == .playing, playingItem === player.currentItem {
+            endOutage(purging: true, "\(current?.id ?? "?") playing again")
+            isLoading = false
+            return
+        }
+        guard outage == nil, !isLoading, let track = current, let item = playingItem,
+              item === player.currentItem,
+              player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
+              player.reasonForWaitingToPlay != .noItemToPlay,
+              !Self.playableOffline(track)
+        else {
+            return
+        }
+        stallGeneration += 1
+        let generation = stallGeneration
+        let since = Date()
+        let position = currentTime
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self, generation == self.stallGeneration, self.outage == nil, self.playingItem === item,
+                  self.player.timeControlStatus == .waitingToPlayAtSpecifiedRate
+            else {
+                return
+            }
+            self.beginOutage(cutOff: track, at: position, since: since, "\(track.id) stalled at \(Int(position)) s")
+        }
+    }
+
+    /// The playing stream gave up (a connection timed out mid-song): with
+    /// no network an outage; otherwise loaded again from that point, once.
+    private func itemDidFail(_ note: Notification) {
+        guard let item = note.object as? AVPlayerItem, item === playingItem, let track = current else {
+            return
+        }
+        let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+        AppLog.player("music: \(track.id) stopped playing — \(error.map { "\($0)" } ?? "no error")")
+        let position = currentTime
+        if outage != nil {
+            if outage?.cutOff?.id == track.id {
+                outage?.loadFailed = true
+            }
+            return
+        }
+        guard !Self.playableOffline(track) else {
+            return
+        }
+        let since = Date()
+        OPNetworkProbe.probe { [weak self] reachable in
+            guard let self, self.playingItem === item, self.outage == nil else {
+                return
+            }
+            guard !reachable else {
+                if let last = self.lastFailedReload, last.id == track.id, Date().timeIntervalSince(last.at) < 60 {
+                    self.skipFailed()
+                } else {
+                    self.lastFailedReload = (track.id, Date())
+                    self.load(startAt: position)
+                }
+                return
+            }
+            self.beginOutage(cutOff: track, at: position, since: since, "\(track.id) stopped, no network")
+            self.outage?.loadFailed = true
+        }
+    }
+
+    /// Silence keeps the app running in the background while music should
+    /// be playing but nothing is heard (`OPKeepAlive`): a suspended app
+    /// could neither retry nor play a song from the device.
+    private func updateKeepAlive() {
+        let background = UIApplication.shared.applicationState == .background
+        let silent = outage?.idle == true || isLoading || waitingForMore
+            || (playingItem != nil && player.timeControlStatus == .waitingToPlayAtSpecifiedRate)
+        let wanted = background && current != nil && silent
+        guard wanted != OPKeepAlive.isActive else {
+            return
+        }
+        OPKeepAlive.setActive(wanted)
+        AppLog.player("music: keep-alive \(wanted ? "on" : "off")")
     }
 
     // MARK: - Preloading the next track
@@ -1329,14 +1861,16 @@ final class MusicPlayer: NSObject {
               repeatMode != .one,
               !isLoading,
               let item = playingItem,
-              item === player.currentItem,
-              let next = nextTrack
+              item === player.currentItem
         else {
             return
         }
         let remaining = duration - currentTime
-        let lead = max(120, OPMusicSettings.cacheSeconds)
-        guard duration > 0, remaining <= lead else {
+        // Back from an outage, the track cut off is preloaded at once: that
+        // is what proves the network is usable (`plannedNext`).
+        let lead = outage?.reachable == true ? .infinity : max(120, OPMusicSettings.cacheSeconds)
+        // Timing first: during an outage, finding the next song is work.
+        guard duration > 0, remaining <= lead, let next = preloadTarget else {
             return
         }
         prefetcher.prefetch(next, after: item, in: player)
@@ -1458,6 +1992,7 @@ final class MusicPlayer: NSObject {
     }
 
     private func postChange() {
+        updateKeepAlive()
         NotificationCenter.default.post(name: Self.didChangeNotification, object: self)
     }
 }
@@ -1492,6 +2027,7 @@ extension MusicPlayer: PlaybackContext {
         }
         let attached = CACurrentMediaTime()
         isLoading = false
+        soundStarted()
         beginNowPlaying(track, duration: prepared.duration)
         let announced = CACurrentMediaTime()
         postChange()
@@ -1509,6 +2045,34 @@ extension MusicPlayer: PlaybackContext {
 
     func showPlaybackError(_ message: String) {
         AppLog.player("music: \(current?.id ?? "?") failed — \(message)")
+        guard let track = current, outage?.bridging != true, !Self.playableOffline(track) else {
+            skipFailed()
+            return
+        }
+        if outage != nil {
+            // A retry of the track cut off: the outage goes on.
+            outage?.loadFailed = true
+            return
+        }
+        // The network, or this track? Spinning on meanwhile.
+        let failedToken = token
+        let began = loadBegan
+        OPNetworkProbe.probe { [weak self] reachable in
+            guard let self, self.token === failedToken, self.current?.id == track.id, self.outage == nil else {
+                return
+            }
+            guard !reachable else {
+                self.skipFailed()
+                return
+            }
+            self.beginOutage(cutOff: track, at: began.at, since: began.date, "\(track.id) failed, no network")
+            self.outage?.loadFailed = true
+        }
+    }
+
+    /// A track that will not play is passed over, unless several in a row
+    /// have failed.
+    private func skipFailed() {
         isLoading = false
         consecutiveFailures += 1
         guard consecutiveFailures < 3, nextTrack != nil else {

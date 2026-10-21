@@ -238,7 +238,8 @@ final class MusicPlayerViewController: UIViewController, UIGestureRecognizerDele
         // neighbours until saved, then the accent.
         downloadButton.tintColor = MusicDownloads.state(of: track.id) == .none ? theme.primaryText : theme.accent
         player.isLoading ? spinner.startAnimating() : spinner.stopAnimating()
-        let playing = player.player.timeControlStatus != .paused
+        // Waiting for the network counts as playing: the button stops it.
+        let playing = player.player.timeControlStatus != .paused || player.isWaitingForNetwork
         setSymbol(playButton, playing ? "pause.fill" : "play.fill", size: 44)
         shuffleButton.tintColor = player.isShuffled ? theme.accent : theme.secondaryText
         setSymbol(sleepButton, OPSleepTimer.isArmed ? "moon.fill" : "moon", size: 20)
